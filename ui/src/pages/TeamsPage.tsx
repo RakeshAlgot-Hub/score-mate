@@ -78,8 +78,8 @@ const TeamsPage: React.FC = () => {
       const response = await createMatch(matchConfig);
       
       setCurrentMatch({
-        id: response.data.id,
-        scoreboard: response.data.scoreboard,
+        id: response.result.id,
+        scoreboard: response.result.scoreboard,
         settings: matchConfig.settings,
       });
       
@@ -91,30 +91,31 @@ const TeamsPage: React.FC = () => {
     }
   };
 
-  const handleStartMatch = async () => {
-    console.log('Starting match with config:', formData);
-    if (!validateForm()) return;
+ const handleStartMatch = async () => {
+  console.log('Starting match with config:', formData);
+  if (!validateForm()) return;
 
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const matchConfig = createMatchConfig();
-      const response = await createMatch(matchConfig);
-      
-      setCurrentMatch({
-        id: response.data.id,
-        scoreboard: response.data.scoreboard,
-        settings: matchConfig.settings,
-      });
-      
-      navigate(ROUTES.SELECT_PLAYERS);
-    } catch (error) {
-      setError(handleApiError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const matchConfig = createMatchConfig();
+    const response = await createMatch(matchConfig); // response.result is your match
+
+    setCurrentMatch({
+      id: response.result.id,
+      scoreboard: response.result.scoreboard, // from backend
+      settings: matchConfig.settings,
+    });
+
+    navigate(ROUTES.SELECT_PLAYERS);
+  } catch (error) {
+    setError(handleApiError(error));
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="p-4 max-w-md mx-auto pb-20">

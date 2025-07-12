@@ -89,15 +89,20 @@ export interface MatchScoreboard {
 
 export interface Match {
   id: string;
-  hostTeam: string;
-  visitorTeam: string;
-  tossWonBy: string;
-  optedTo: string;
+  hostTeam: Team;
+  visitorTeam: Team;
+  tossWonBy: 'host' | 'visitor';
+  optedTo: 'bat' | 'bowl';
   overs: number;
-  currentScore: string;
+  settings: MatchSettings;
+  openingPlayers: OpeningPlayers;
+  currentInnings: number;
+  battingTeam: string | null;
+  bowlingTeam: string | null;
   status: 'active' | 'completed' | 'abandoned';
   createdAt: string;
   lastUpdated: string;
+  scoreboard?: MatchScoreboard; // if included in some APIs
 }
 
 export interface CurrentMatch {
@@ -106,10 +111,11 @@ export interface CurrentMatch {
   settings: MatchSettings;
 }
 
+// Generic API response as per your backend: { code, message, result }
 export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  success: boolean;
+  code: number;
+  message: string;
+  result: T;
 }
 
 export interface ApiError {

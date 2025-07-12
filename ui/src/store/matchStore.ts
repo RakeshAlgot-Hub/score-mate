@@ -91,7 +91,7 @@ export const useMatchStore = create<MatchStore>()(
 
       isMatchActive: () => {
         const match = get().currentMatch;
-        return match?.scoreboard && !match.scoreboard.isComplete;
+        return !!(match?.scoreboard && !match.scoreboard.isComplete);
       },
     }),
     {
