@@ -15,7 +15,7 @@ import { ROUTES } from '../constants/appConstants';
 const ScoringPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentMatch, updateScoreboard, setLoading, setError, isLoading, getCurrentScore } = useMatchStore();
-  
+
   const [showWicketModal, setShowWicketModal] = useState(false);
   const [showBowlerModal, setShowBowlerModal] = useState(false);
   const [newBatsman, setNewBatsman] = useState('');
@@ -24,17 +24,15 @@ const ScoringPage: React.FC = () => {
   const [currentBalls, setCurrentBalls] = useState<any[]>([]);
 
   useEffect(() => {
-    if (currentMatch) {
-      loadScoreboard();
-    }
-  }, [currentMatch]);
+    loadScoreboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadScoreboard = async () => {
-    if (!currentMatch) return;
-    
+    if (!currentMatch?.id) return;
     try {
       const response = await getScoreboard(currentMatch.id);
-      updateScoreboard(response.data);
+      updateScoreboard(response.result);
     } catch (error) {
       console.error('Error loading scoreboard:', error);
     }
@@ -51,12 +49,12 @@ const ScoringPage: React.FC = () => {
 
     try {
       const response = await submitBall(currentMatch.id, ballData);
-      updateScoreboard(response.data.scoreboard);
-      
+      updateScoreboard(response.result.scoreboard);
+
       // Check if wicket or over completed
       if (ballData.isWicket) {
         setShowWicketModal(true);
-      } else if (response.data.scoreboard.balls % 6 === 0) {
+      } else if (response.result.scoreboard.balls % 6 === 0) {
         setShowBowlerModal(true);
       }
     } catch (error) {
@@ -115,7 +113,7 @@ const ScoringPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await undoLastBall(currentMatch.id);
-      updateScoreboard(response.data.scoreboard);
+      updateScoreboard(response.result.scoreboard);
     } catch (error) {
       setError(handleApiError(error));
     } finally {

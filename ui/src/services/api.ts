@@ -11,7 +11,7 @@ const api = axios.create({
 // Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => Promise.reject(error)
@@ -21,7 +21,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    // console.error('API Error:', error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
@@ -38,7 +38,7 @@ export const setOpeningPlayers = (id: string, data: OpeningPlayers) =>
 export const submitBall = (id: string, data: BallData) => 
   api.post(`/matches/${id}/ball`, data);
 
-export const fetchScoreboard = (id: string) => 
+export const getScoreboard = (id: string) => 
   api.get(`/matches/${id}/scoreboard`);
 
 export const fetchMatches = () => 

@@ -7,7 +7,7 @@ interface MatchStore {
   currentMatch: CurrentMatch | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   setCurrentMatch: (match: CurrentMatch) => void;
   updateScoreboard: (scoreboard: MatchScoreboard) => void;
@@ -15,7 +15,7 @@ interface MatchStore {
   clearCurrentMatch: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   // Computed
   getCurrentScore: () => string;
   isMatchActive: () => boolean;
@@ -31,22 +31,23 @@ export const useMatchStore = create<MatchStore>()(
 
       // Actions
       setCurrentMatch: (match: CurrentMatch) => {
-        set({ 
-          currentMatch: match, 
-          error: null 
+        set({
+          currentMatch: match,
+          error: null
         });
       },
 
-      updateScoreboard: (scoreboard: MatchScoreboard) => {
-        const current = get().currentMatch;
-        if (current) {
-          set({
+      updateScoreboard: (newScoreboard) => {
+        set(state => {
+          if (!state.currentMatch) return state;
+          return {
+            ...state,
             currentMatch: {
-              ...current,
-              scoreboard,
-            },
-          });
-        }
+              ...state.currentMatch,
+              scoreboard: newScoreboard,
+            }
+          };
+        });
       },
 
       updateSettings: (settings: MatchSettings) => {
@@ -62,9 +63,9 @@ export const useMatchStore = create<MatchStore>()(
       },
 
       clearCurrentMatch: () => {
-        set({ 
-          currentMatch: null, 
-          error: null 
+        set({
+          currentMatch: null,
+          error: null
         });
       },
 

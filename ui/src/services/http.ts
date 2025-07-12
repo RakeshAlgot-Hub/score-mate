@@ -14,14 +14,14 @@ const axiosInstance: AxiosInstance = axios.create({
 // Request interceptor for logging and auth
 axiosInstance.interceptors.request.use(
   (config) => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     if (config.data) {
       console.log('📤 Request Data:', config.data);
     }
     return config;
   },
   (error: AxiosError) => {
-    console.error('❌ Request Error:', error);
+    // console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -33,16 +33,16 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    console.error('❌ API Error:', error.response?.data || error.message);
-    
+    const data = error.response?.data as { message?: string } | undefined;
+
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'An unexpected error occurred',
-      status: error.response?.status || 500,
-      details: error.response?.data,
+      message: data?.message ?? error.message ?? 'An unexpected error occurred',
+      status: error.response?.status ?? 500,
+      details: data,
     };
-    
+
+    console.error('❌ API Error:', apiError);
     return Promise.reject(apiError);
   }
 );
-
 export default axiosInstance;

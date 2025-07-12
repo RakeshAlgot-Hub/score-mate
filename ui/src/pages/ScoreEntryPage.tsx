@@ -6,7 +6,7 @@ import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import { useMatchStore } from '../store/matchStore';
-import { submitBall, fetchScoreboard } from '../services/api';
+import { submitBall, getScoreboard } from '../services/scoreService';
 import { BallData } from '../types';
 import { formatOvers, calculateStrikeRate } from '../utils/cricketCalculations';
 
@@ -31,8 +31,8 @@ const ScoreEntryPage: React.FC = () => {
     if (!currentMatch) return;
     
     try {
-      const response = await fetchScoreboard(currentMatch.id);
-      updateScoreboard(response.data);
+      const response = await getScoreboard(currentMatch.id);
+      updateScoreboard(response.result);
     } catch (error) {
       console.error('Error loading scoreboard:', error);
     }

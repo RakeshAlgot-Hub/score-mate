@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import { useMatchStore } from '../store/matchStore';
-import { createMatch } from '../services/api';
+import { createMatch } from '../services/matchService';
 import { MatchConfig, Team } from '../types';
 
 const NewMatchPage: React.FC = () => {
@@ -66,18 +66,17 @@ const NewMatchPage: React.FC = () => {
 
     try {
       const response = await createMatch(matchConfig);
-      const matchId = response.data.id;
+      const matchId = response.result.id;
       
       setCurrentMatch({
         id: matchId,
-        scoreboard: response.data.scoreboard,
+        scoreboard: response.result.scoreboard,
         settings: matchConfig.settings,
       });
       
       navigate('/advanced-settings');
     } catch (error) {
       setError('Failed to create match. Please try again.');
-      console.error('Error creating match:', error);
     } finally {
       setLoading(false);
     }

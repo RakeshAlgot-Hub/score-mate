@@ -23,7 +23,7 @@ const HistoryPage: React.FC = () => {
 
     try {
       const response = await getAllMatches();
-      setMatches(response.data);
+      setMatches(response.result);
     } catch (error) {
       setError(handleApiError(error));
     } finally {

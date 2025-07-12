@@ -23,7 +23,7 @@ const ScoreboardPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await getScoreboard(currentMatch.id);
-      updateScoreboard(response.data);
+      updateScoreboard(response.result);
     } catch (error) {
       setError(handleApiError(error));
     } finally {
