@@ -1,109 +1,142 @@
-# Cricket Scorer App - Backend Requirements
+Here's the MongoDB + FastAPI version of your requirements (converted from SQL to NoSQL schemas):
 
-## 📋 Overview
-This document outlines the backend API requirements for the Cricket Scorer App. The backend should provide RESTful APIs for match management, live scoring, player statistics, and data persistence.
+---
 
-## 🛠️ Technology Stack Recommendations
-- **Framework**: Node.js with Express.js / Python with FastAPI / Java Spring Boot
-- **Database**: PostgreSQL or MongoDB
-- **Real-time**: WebSocket support for live score updates
-- **Authentication**: JWT tokens (optional for multi-user)
-- **Documentation**: OpenAPI/Swagger
-- **Deployment**: Docker containers
+## 🗄️ MongoDB Collections
 
-## 🗄️ Database Schema
+### 1. `matches` Collection
 
-### 1. Matches Table
-```sql
-CREATE TABLE matches (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    host_team VARCHAR(100) NOT NULL,
-    visitor_team VARCHAR(100) NOT NULL,
-    overs INTEGER NOT NULL,
-    toss_winner VARCHAR(100) NOT NULL,
-    decision VARCHAR(10) CHECK (decision IN ('bat', 'bowl')),
-    status VARCHAR(20) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'abandoned')),
-    current_runs INTEGER DEFAULT 0,
-    current_wickets INTEGER DEFAULT 0,
-    current_overs INTEGER DEFAULT 0,
-    current_balls INTEGER DEFAULT 0,
-    batting_team VARCHAR(100),
-    bowling_team VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+```json
+{
+  "_id": "ObjectId",
+  "hostTeam": "India",
+  "visitorTeam": "West Indies",
+  "overs": 20,
+  "tossWinner": "India",
+  "decision": "bat", // enum: ["bat", "bowl"]
+  "status": "in_progress", // enum: ["in_progress", "completed", "abandoned"]
+  "currentRuns": 0,
+  "currentWickets": 0,
+  "currentOvers": 0,
+  "currentBalls": 0,
+  "battingTeam": "India",
+  "bowlingTeam": "West Indies",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
 ```
 
-### 2. Players Table
-```sql
-CREATE TABLE players (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    team VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+---
+
+### 2. `players` Collection
+
+```json
+{
+  "_id": "ObjectId",
+  "name": "Virat Kohli",
+  "team": "India",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
 ```
 
-### 3. Batting Stats Table
-```sql
-CREATE TABLE batting_stats (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
-    player_id UUID REFERENCES players(id),
-    runs INTEGER DEFAULT 0,
-    balls INTEGER DEFAULT 0,
-    fours INTEGER DEFAULT 0,
-    sixes INTEGER DEFAULT 0,
-    is_out BOOLEAN DEFAULT FALSE,
-    dismissal_type VARCHAR(100),
-    not_out BOOLEAN DEFAULT FALSE,
-    strike_rate DECIMAL(5,2) DEFAULT 0.00
-);
+---
+
+### 3. `battingStats` Collection
+
+```json
+{
+  "_id": "ObjectId",
+  "matchId": "ObjectId",
+  "playerId": "ObjectId",
+  "runs": 0,
+  "balls": 0,
+  "fours": 0,
+  "sixes": 0,
+  "isOut": false,
+  "dismissalType": null,
+  "notOut": true,
+  "strikeRate": 0.0
+}
 ```
 
-### 4. Bowling Stats Table
-```sql
-CREATE TABLE bowling_stats (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
-    player_id UUID REFERENCES players(id),
-    overs DECIMAL(3,1) DEFAULT 0.0,
-    maidens INTEGER DEFAULT 0,
-    runs INTEGER DEFAULT 0,
-    wickets INTEGER DEFAULT 0,
-    economy DECIMAL(4,2) DEFAULT 0.00
-);
+---
+
+### 4. `bowlingStats` Collection
+
+```json
+{
+  "_id": "ObjectId",
+  "matchId": "ObjectId",
+  "playerId": "ObjectId",
+  "overs": 0.0,
+  "maidens": 0,
+  "runs": 0,
+  "wickets": 0,
+  "economy": 0.0
+}
 ```
 
-### 5. Ball by Ball Table
-```sql
-CREATE TABLE ball_by_ball (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
-    over_number INTEGER NOT NULL,
-    ball_number INTEGER NOT NULL,
-    batsman_id UUID REFERENCES players(id),
-    bowler_id UUID REFERENCES players(id),
-    runs INTEGER DEFAULT 0,
-    is_wicket BOOLEAN DEFAULT FALSE,
-    extra_type VARCHAR(20) CHECK (extra_type IN ('wide', 'noBall', 'bye', 'legBye')),
-    dismissal_type VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+---
+
+### 5. `balls` Collection (ball-by-ball tracking)
+
+```json
+{
+  "_id": "ObjectId",
+  "matchId": "ObjectId",
+  "overNumber": 1,
+  "ballNumber": 3,
+  "batsmanId": "ObjectId",
+  "bowlerId": "ObjectId",
+  "runs": 1,
+  "isWicket": false,
+  "extraType": null, // one of: "wide", "noBall", "bye", "legBye"
+  "dismissalType": null,
+  "createdAt": "2024-01-15T10:32:00Z"
+}
 ```
 
-### 6. Fall of Wickets Table
-```sql
-CREATE TABLE fall_of_wickets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
-    wicket_number INTEGER NOT NULL,
-    runs INTEGER NOT NULL,
-    over_number DECIMAL(3,1) NOT NULL,
-    batsman_id UUID REFERENCES players(id),
-    dismissal_type VARCHAR(100)
-);
+---
+
+### 6. `fallOfWickets` Collection
+
+```json
+{
+  "_id": "ObjectId",
+  "matchId": "ObjectId",
+  "wicketNumber": 1,
+  "runs": 15,
+  "overNumber": 2.3,
+  "batsmanId": "ObjectId",
+  "dismissalType": "caught"
+}
 ```
+
+---
+
+### 🔐 Optional: `users` Collection (for JWT Auth)
+
+```json
+{
+  "_id": "ObjectId",
+  "username": "scorer1",
+  "passwordHash": "hashed_pw",
+  "role": "scorer"
+}
+```
+
+---
+
+## ✅ API Endpoint Support
+
+All API routes from your requirements can stay the same. They’ll now:
+
+* Query or aggregate MongoDB collections
+* Use Pydantic models for type validation
+* Use `motor` or `beanie` for async MongoDB access
+
+---
+
 
 ## 🔌 API Endpoints
 
