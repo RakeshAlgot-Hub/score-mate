@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, History, Trophy } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { ROUTES } from '../constants/appConstants';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,18 +14,18 @@ const HomePage: React.FC = () => {
         <div className="bg-primary-600 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
           <Trophy className="text-white" size={40} />
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Score Mate</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">ScoreMate</h1>
         <p className="text-gray-600">Professional Cricket Scoring</p>
       </div>
 
       <div className="space-y-4">
         <Card>
           <Button
-            onClick={() => navigate('/teams')}
+            onClick={() => navigate(ROUTES.TEAMS)}
             variant="primary"
             size="lg"
             icon={Plus}
-            className="w-full"
+            fullWidth
           >
             Start New Match
           </Button>
@@ -32,11 +33,11 @@ const HomePage: React.FC = () => {
 
         <Card>
           <Button
-            onClick={() => navigate('/history')}
+            onClick={() => navigate(ROUTES.HISTORY)}
             variant="outline"
             size="lg"
             icon={History}
-            className="w-full"
+            fullWidth
           >
             Match History
           </Button>

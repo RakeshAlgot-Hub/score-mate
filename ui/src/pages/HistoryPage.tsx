@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Play, BarChart3, Trash2, Calendar } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { useMatchStore } from '../store/matchStore';
-import { fetchMatches } from '../services/api';
+import { useMatchStore, handleApiError } from '../store/matchStore';
+import { getAllMatches, deleteMatch } from '../services/matchService';
 import { Match } from '../types';
+import { ROUTES } from '../constants/appConstants';
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setCurrentMatch, setLoading, setError } = useMatchStore();
+  const { setCurrentMatch, setLoading, setError, isLoading } = useMatchStore();
   const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
@@ -21,11 +22,10 @@ const HistoryPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetchMatches();
+      const response = await getAllMatches();
       setMatches(response.data);
     } catch (error) {
-      setError('Failed to load match history');
-      console.error('Error loading matches:', error);
+      setError(handleApiError(error));
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ const HistoryPage: React.FC = () => {
       scoreboard: {} as any, // Will be loaded in scoring page
       settings: {} as any, // Will be loaded in scoring page
     });
-    navigate('/scoring');
+    navigate(ROUTES.SCORING);
   };
 
   const handleViewScoreboard = (match: Match) => {
@@ -46,7 +46,18 @@ const HistoryPage: React.FC = () => {
       scoreboard: {} as any, // Will be loaded in scoreboard page
       settings: {} as any,
     });
-    navigate('/scoreboard');
+    navigate(ROUTES.SCOREBOARD);
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!confirm('Are you sure you want to delete this match?')) return;
+
+    try {
+      await deleteMatch(matchId);
+      setMatches(matches.filter(m => m.id !== matchId));
+    } catch (error) {
+      setError(handleApiError(error));
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -73,6 +84,16 @@ const HistoryPage: React.FC = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-4 max-w-md mx-auto pb-20">
+        <Card>
+          <p className="text-center text-gray-600">Loading matches...</p>
+        </Card>
+      </div>
+    );
+  }
+
   if (matches.length === 0) {
     return (
       <div className="p-4 max-w-md mx-auto pb-20">
@@ -82,7 +103,7 @@ const HistoryPage: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No matches yet</h3>
             <p className="text-gray-600 mb-6">Start your first match to see it here</p>
             <Button
-              onClick={() => navigate('/teams')}
+              onClick={() => navigate(ROUTES.TEAMS)}
               variant="primary"
               size="lg"
             >
@@ -99,7 +120,7 @@ const HistoryPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-900">Match History</h2>
         <Button
-          onClick={() => navigate('/teams')}
+          onClick={() => navigate(ROUTES.TEAMS)}
           variant="primary"
           size="sm"
         >
@@ -113,11 +134,11 @@ const HistoryPage: React.FC = () => {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize">
+                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize bg-gray-100">
                     {match.hostTeam.slice(0, 3).toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-500">vs</span>
-                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize">
+                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize bg-gray-100">
                     {match.visitorTeam.slice(0, 3).toUpperCase()}
                   </span>
                 </div>
@@ -169,7 +190,7 @@ const HistoryPage: React.FC = () => {
               </Button>
               
               <Button
-                onClick={() => console.log('Delete match', match.id)}
+                onClick={() => handleDeleteMatch(match.id)}
                 variant="outline"
                 size="sm"
                 icon={Trash2}

@@ -105,3 +105,15 @@ export interface CurrentMatch {
   scoreboard: MatchScoreboard;
   settings: MatchSettings;
 }
+
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success: boolean;
+}
+
+export interface ApiError {
+  message: string;
+  status: number;
+  details?: any;
+}

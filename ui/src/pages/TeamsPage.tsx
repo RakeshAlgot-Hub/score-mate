@@ -1,24 +1,37 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users } from 'lucide-react';
+import { Settings, Play } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import { useMatchStore, handleApiError } from '../store/matchStore';
+import { createMatch } from '../services/matchService';
+import { MatchConfig } from '../types';
+import { ROUTES } from '../constants/appConstants';
+
+interface FormData {
+  hostTeam: string;
+  visitorTeam: string;
+  tossWonBy: 'host' | 'visitor';
+  optedTo: 'bat' | 'bowl';
+  overs: number;
+}
 
 const TeamsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { setCurrentMatch, setLoading, setError, isLoading } = useMatchStore();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     hostTeam: '',
     visitorTeam: '',
-    tossWonBy: 'host' as 'host' | 'visitor',
-    optedTo: 'bat' as 'bat' | 'bowl',
-    overs: 16,
+    tossWonBy: 'host',
+    optedTo: 'bat',
+    overs: 20,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.hostTeam.trim()) {
@@ -41,15 +54,65 @@ const TeamsPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAdvancedSettings = () => {
-    if (validateForm()) {
-      navigate('/advanced-settings');
+  const createMatchConfig = (): MatchConfig => ({
+    hostTeam: { name: formData.hostTeam.trim(), players: [] },
+    visitorTeam: { name: formData.visitorTeam.trim(), players: [] },
+    tossWonBy: formData.tossWonBy,
+    optedTo: formData.optedTo,
+    overs: formData.overs,
+    settings: {
+      playersPerTeam: 11,
+      noBall: { reball: true, runs: 1 },
+      wideBall: { reball: true, runs: 1 },
+    },
+  });
+
+  const handleAdvancedSettings = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const matchConfig = createMatchConfig();
+      const response = await createMatch(matchConfig);
+      
+      setCurrentMatch({
+        id: response.data.id,
+        scoreboard: response.data.scoreboard,
+        settings: matchConfig.settings,
+      });
+      
+      navigate(ROUTES.ADVANCED_SETTINGS);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleStartMatch = () => {
-    if (validateForm()) {
-      navigate('/select-players');
+  const handleStartMatch = async () => {
+    console.log('Starting match with config:', formData);
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const matchConfig = createMatchConfig();
+      const response = await createMatch(matchConfig);
+      
+      setCurrentMatch({
+        id: response.data.id,
+        scoreboard: response.data.scoreboard,
+        settings: matchConfig.settings,
+      });
+      
+      navigate(ROUTES.SELECT_PLAYERS);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,7 +141,7 @@ const TeamsPage: React.FC = () => {
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Toss won by?
+            Toss won by? <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
             <label className="flex items-center">
@@ -108,7 +171,7 @@ const TeamsPage: React.FC = () => {
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Opted to?
+            Opted to? <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
             <label className="flex items-center">
@@ -144,6 +207,8 @@ const TeamsPage: React.FC = () => {
           placeholder="Enter number of overs"
           required
           error={errors.overs}
+          min={1}
+          max={50}
         />
 
         <div className="flex space-x-3 mt-6">
@@ -151,7 +216,9 @@ const TeamsPage: React.FC = () => {
             onClick={handleAdvancedSettings}
             variant="outline"
             size="lg"
+            icon={Settings}
             className="flex-1"
+            disabled={isLoading}
           >
             Advanced settings
           </Button>
@@ -160,7 +227,9 @@ const TeamsPage: React.FC = () => {
             onClick={handleStartMatch}
             variant="primary"
             size="lg"
+            icon={Play}
             className="flex-1"
+            loading={isLoading}
           >
             Start match
           </Button>

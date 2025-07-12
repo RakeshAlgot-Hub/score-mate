@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+  closeOnOverlayClick?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -15,7 +16,20 @@ const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = 'md',
+  closeOnOverlayClick = true,
 }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const maxWidthClasses = {
@@ -30,7 +44,7 @@ const Modal: React.FC<ModalProps> = ({
       <div className="flex min-h-screen items-center justify-center p-4">
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-          onClick={onClose}
+          onClick={closeOnOverlayClick ? onClose : undefined}
         />
         
         <div className={`relative w-full ${maxWidthClasses[maxWidth]} transform rounded-lg bg-white shadow-xl transition-all`}>
@@ -38,7 +52,7 @@ const Modal: React.FC<ModalProps> = ({
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
             >
               <X size={20} />
             </button>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Settings, Home, Plus, Users, History } from 'lucide-react';
+import { ArrowLeft, Home, Plus, Users, History } from 'lucide-react';
+import { ROUTES } from '../constants/appConstants';
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
@@ -8,29 +9,27 @@ const Layout: React.FC = () => {
   
   const getPageTitle = () => {
     switch (location.pathname) {
-      case '/':
-        return 'Score Mate';
-      case '/new-match':
-        return 'New Match';
-      case '/teams':
+      case ROUTES.HOME:
+        return 'ScoreMate';
+      case ROUTES.TEAMS:
         return 'Teams';
-      case '/advanced-settings':
+      case ROUTES.ADVANCED_SETTINGS:
         return 'Match Settings';
-      case '/select-players':
+      case ROUTES.SELECT_PLAYERS:
         return 'Select Opening Players';
-      case '/scoring':
+      case ROUTES.SCORING:
         return 'Live Scoring';
-      case '/scoreboard':
+      case ROUTES.SCOREBOARD:
         return 'Scoreboard';
-      case '/history':
+      case ROUTES.HISTORY:
         return 'Match History';
       default:
-        return 'Score Mate';
+        return 'ScoreMate';
     }
   };
 
-  const showBackButton = location.pathname !== '/' && location.pathname !== '/history' && location.pathname !== '/teams';
-  const showBottomNav = ['/', '/teams', '/history'].includes(location.pathname);
+  const showBackButton = ![ROUTES.HOME, ROUTES.TEAMS, ROUTES.HISTORY].includes(location.pathname as any);
+  const showBottomNav = [ROUTES.HOME, ROUTES.TEAMS, ROUTES.HISTORY].includes(location.pathname as any);
 
   return (
     <div className="min-h-screen bg-cricket-gray">
@@ -51,9 +50,9 @@ const Layout: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            {location.pathname === '/' && (
+            {location.pathname === ROUTES.HOME && (
               <button
-                onClick={() => navigate('/history')}
+                onClick={() => navigate(ROUTES.HISTORY)}
                 className="p-2 rounded-lg hover:bg-primary-700 transition-colors"
                 aria-label="Match history"
               >
@@ -74,9 +73,9 @@ const Layout: React.FC = () => {
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50">
           <div className="flex justify-around max-w-md mx-auto">
             <button
-              onClick={() => navigate('/teams')}
+              onClick={() => navigate(ROUTES.TEAMS)}
               className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
-                location.pathname === '/teams' 
+                location.pathname === ROUTES.TEAMS 
                   ? 'text-primary-600 bg-primary-50' 
                   : 'text-gray-600 hover:text-primary-600'
               }`}
@@ -86,9 +85,9 @@ const Layout: React.FC = () => {
             </button>
             
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(ROUTES.HOME)}
               className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
-                location.pathname === '/' 
+                location.pathname === ROUTES.HOME 
                   ? 'text-primary-600 bg-primary-50' 
                   : 'text-gray-600 hover:text-primary-600'
               }`}
@@ -98,9 +97,9 @@ const Layout: React.FC = () => {
             </button>
             
             <button
-              onClick={() => navigate('/history')}
+              onClick={() => navigate(ROUTES.HISTORY)}
               className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
-                location.pathname === '/history' 
+                location.pathname === ROUTES.HISTORY 
                   ? 'text-primary-600 bg-primary-50' 
                   : 'text-gray-600 hover:text-primary-600'
               }`}

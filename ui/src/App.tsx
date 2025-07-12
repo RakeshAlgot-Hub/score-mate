@@ -3,12 +3,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import TeamsPage from './pages/TeamsPage';
-import NewMatchPage from './pages/NewMatchPage';
 import AdvancedSettingsPage from './pages/AdvancedSettingsPage';
 import SelectOpeningPlayersPage from './pages/SelectOpeningPlayersPage';
-import ScoreEntryPage from './pages/ScoreEntryPage';
+import ScoringPage from './pages/ScoringPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import HistoryPage from './pages/HistoryPage';
+import { ROUTES } from './constants/appConstants';
 
 function App() {
   return (
@@ -17,13 +17,12 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
-            <Route path="teams" element={<TeamsPage />} />
-            <Route path="new-match" element={<NewMatchPage />} />
-            <Route path="advanced-settings" element={<AdvancedSettingsPage />} />
-            <Route path="select-players" element={<SelectOpeningPlayersPage />} />
-            <Route path="scoring" element={<ScoreEntryPage />} />
-            <Route path="scoreboard" element={<ScoreboardPage />} />
-            <Route path="history" element={<HistoryPage />} />
+            <Route path={ROUTES.TEAMS.slice(1)} element={<TeamsPage />} />
+            <Route path={ROUTES.ADVANCED_SETTINGS.slice(1)} element={<AdvancedSettingsPage />} />
+            <Route path={ROUTES.SELECT_PLAYERS.slice(1)} element={<SelectOpeningPlayersPage />} />
+            <Route path={ROUTES.SCORING.slice(1)} element={<ScoringPage />} />
+            <Route path={ROUTES.SCOREBOARD.slice(1)} element={<ScoreboardPage />} />
+            <Route path={ROUTES.HISTORY.slice(1)} element={<HistoryPage />} />
           </Route>
         </Routes>
       </div>

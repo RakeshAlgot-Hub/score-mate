@@ -4,13 +4,14 @@ import { Play } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
-import { useMatchStore } from '../store/matchStore';
-import { setOpeningPlayers } from '../services/api';
+import { useMatchStore, handleApiError } from '../store/matchStore';
+import { setOpeningPlayers } from '../services/scoreService';
 import { OpeningPlayers } from '../types';
+import { ROUTES } from '../constants/appConstants';
 
 const SelectOpeningPlayersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentMatch, setLoading, setError } = useMatchStore();
+  const { currentMatch, setLoading, setError, isLoading } = useMatchStore();
   
   const [players, setPlayers] = useState<OpeningPlayers>({
     striker: '',
@@ -20,7 +21,7 @@ const SelectOpeningPlayersPage: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
     if (!players.striker.trim()) {
@@ -56,10 +57,9 @@ const SelectOpeningPlayersPage: React.FC = () => {
 
     try {
       await setOpeningPlayers(currentMatch.id, players);
-      navigate('/scoring');
+      navigate(ROUTES.SCORING);
     } catch (error) {
-      setError('Failed to set opening players. Please try again.');
-      console.error('Error setting opening players:', error);
+      setError(handleApiError(error));
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,9 @@ const SelectOpeningPlayersPage: React.FC = () => {
           variant="primary"
           size="lg"
           icon={Play}
-          className="w-full mt-6"
+          fullWidth
+          loading={isLoading}
+          className="mt-6"
         >
           Start Scoring
         </Button>

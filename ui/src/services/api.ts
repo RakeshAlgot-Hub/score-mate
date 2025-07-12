@@ -2,7 +2,7 @@ import axios from 'axios';
 import { MatchConfig, MatchSettings, OpeningPlayers, BallData } from '../types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },

@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Share } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { useMatchStore } from '../store/matchStore';
-import { fetchScoreboard } from '../services/api';
-import { calculateStrikeRate, formatOvers } from '../utils/cricketCalculations';
+import { useMatchStore, handleApiError } from '../store/matchStore';
+import { getScoreboard } from '../services/scoreService';
+import { ROUTES } from '../constants/appConstants';
 
 const ScoreboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentMatch, updateScoreboard, setLoading } = useMatchStore();
+  const { currentMatch, updateScoreboard, setLoading, setError, isLoading } = useMatchStore();
 
   useEffect(() => {
     if (currentMatch) {
@@ -22,13 +22,23 @@ const ScoreboardPage: React.FC = () => {
     
     setLoading(true);
     try {
-      const response = await fetchScoreboard(currentMatch.id);
+      const response = await getScoreboard(currentMatch.id);
       updateScoreboard(response.data);
     } catch (error) {
-      console.error('Error loading scoreboard:', error);
+      setError(handleApiError(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatOvers = (balls: number): string => {
+    const overs = Math.floor(balls / 6);
+    const remainingBalls = balls % 6;
+    return remainingBalls === 0 ? `${overs}` : `${overs}.${remainingBalls}`;
+  };
+
+  const calculateStrikeRate = (runs: number, balls: number): number => {
+    return balls > 0 ? (runs / balls) * 100 : 0;
   };
 
   const scoreboard = currentMatch?.scoreboard;
@@ -52,7 +62,7 @@ const ScoreboardPage: React.FC = () => {
             {scoreboard.hostTeam} vs {scoreboard.visitorTeam}
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            {scoreboard.battingTeam} won the toss and opted to bat first.
+            {scoreboard.battingTeam} batting
           </p>
           
           <div className="bg-primary-50 rounded-lg p-4 mb-4">
@@ -196,7 +206,7 @@ const ScoreboardPage: React.FC = () => {
           variant="outline"
           icon={ArrowLeft}
           className="flex-1"
-          onClick={() => navigate('/scoring')}
+          onClick={() => navigate(ROUTES.SCORING)}
         >
           Back to Scoring
         </Button>

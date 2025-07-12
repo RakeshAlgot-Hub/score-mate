@@ -10,6 +10,9 @@ interface InputProps {
   disabled?: boolean;
   className?: string;
   error?: string;
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 const Input: React.FC<InputProps> = ({
@@ -22,6 +25,9 @@ const Input: React.FC<InputProps> = ({
   disabled = false,
   className = '',
   error,
+  min,
+  max,
+  step,
 }) => {
   return (
     <div className={`mb-4 ${className}`}>
@@ -37,7 +43,10 @@ const Input: React.FC<InputProps> = ({
         placeholder={placeholder}
         required={required}
         disabled={disabled}
-        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
+        min={min}
+        max={max}
+        step={step}
+        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors ${
           error ? 'border-red-500' : 'border-gray-300'
         }`}
       />
