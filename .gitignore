@@ -1,0 +1,122 @@
+# ========================
+# 🔙 BACKEND (Python/FastAPI)
+# ========================
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv*
+env/
+.venv/
+ENV/
+
+# C extensions
+*.so
+
+# MyPy / Pylint / Type checking
+.mypy_cache/
+.dmypy.json
+.pytype/
+
+# Test, coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.cache
+.tox/
+.nox/
+
+# Logs and runtime
+*.log
+*.pid
+logs/
+*.out
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# SQLite / DB
+*.sqlite3
+*.db
+*.sql
+*.bak
+dump/
+
+# VS Code / IDE
+.vscode/
+.history/
+.idea/
+*.sublime-*
+
+# macOS / Windows / Linux OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# 🧑‍🎨 FRONTEND (React/Vite/TypeScript)
+# ========================
+
+# node modules
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# dist / build output
+**/dist/
+**/build/
+**/.next/
+**/.vite/
+
+# Temporary files
+**/.cache/
+**/.turbo/
+**/coverage/
+**/.eslintcache
+
+# TypeScript
+**/*.tsbuildinfo
+
+# Vite
+**/.vitepress/
+**/.vite/
+
+# Env
+**/.env
+**/.env.*
+!**/.env.example
+
+# ========================
+# 🐳 DOCKER
+# ========================
+.dockerignore
+docker-compose.override.yml
+**/Dockerfile.*
+.docker/
+
+# ========================
+# 🧪 OPTIONAL: Lock files
+# ========================
+poetry.lock
+Pipfile.lock
+yarn.lock
+package-lock.json
+
+# ========================
+# 🔄 MONOREPO (optional)
+# ========================
+pnpm-lock.yaml
+apps/*/node_modules/
+packages/*/node_modules/
