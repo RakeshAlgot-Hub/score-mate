@@ -135,27 +135,29 @@ const HistoryPage: React.FC = () => {
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
                   <span className="text-xs px-2 py-1 rounded-full font-medium capitalize bg-gray-100">
-                    {match.hostTeam.slice(0, 3).toUpperCase()}
+                    {match.hostTeam.name.slice(0, 3).toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-500">vs</span>
                   <span className="text-xs px-2 py-1 rounded-full font-medium capitalize bg-gray-100">
-                    {match.visitorTeam.slice(0, 3).toUpperCase()}
+                    {match.visitorTeam.name.slice(0, 3).toUpperCase()}
                   </span>
                 </div>
-                
+
                 <h3 className="font-semibold text-gray-900 mb-1">
-                  {match.hostTeam} vs {match.visitorTeam}
+                  {match.hostTeam.name} vs {match.visitorTeam.name}
                 </h3>
-                
+
                 <p className="text-sm text-gray-600 mb-2">
-                  {match.currentScore}
+                  {match.scoreboard
+                    ? `${match.scoreboard.score}/${match.scoreboard.wickets} in ${match.scoreboard.overs}.${match.scoreboard.balls} overs`
+                    : 'No score yet'}
                 </p>
-                
+
                 <p className="text-xs text-gray-500">
                   {match.tossWonBy} won toss, opted to {match.optedTo}
                 </p>
               </div>
-              
+
               <div className="text-right">
                 <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
                   {match.status}
@@ -178,7 +180,7 @@ const HistoryPage: React.FC = () => {
                   Resume
                 </Button>
               )}
-              
+
               <Button
                 onClick={() => handleViewScoreboard(match)}
                 variant="outline"
@@ -188,7 +190,7 @@ const HistoryPage: React.FC = () => {
               >
                 Scoreboard
               </Button>
-              
+
               <Button
                 onClick={() => handleDeleteMatch(match.id)}
                 variant="outline"
@@ -196,7 +198,10 @@ const HistoryPage: React.FC = () => {
                 icon={Trash2}
                 className="text-red-600 hover:text-red-700 hover:border-red-300"
               >
+                Delete
               </Button>
+
+
             </div>
           </Card>
         ))}
