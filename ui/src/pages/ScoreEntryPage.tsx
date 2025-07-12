@@ -1,136 +1,112 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getMatchById } from '../services/matchService';
-import { updateScore } from '../services/scoreService';
-import { Match, CurrentOver, BallUpdate } from '../types';
-import ScorePad from '../components/ScorePad';
-import OverDisplay from '../components/OverDisplay';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, RotateCcw, UserPlus, RefreshCw } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Modal from '../components/ui/Modal';
+import Input from '../components/ui/Input';
+import { useMatchStore } from '../store/matchStore';
+import { submitBall, fetchScoreboard } from '../services/api';
+import { BallData } from '../types';
+import { formatOvers, calculateStrikeRate } from '../utils/cricketCalculations';
 
 const ScoreEntryPage: React.FC = () => {
-  const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
-  const [match, setMatch] = useState<Match | null>(null);
-  const [currentScore, setCurrentScore] = useState({
-    runs: 22,
-    wickets: 2,
-    overs: 3,
-    balls: 5
-  });
-  const [currentOver, setCurrentOver] = useState<CurrentOver>({
-    balls: [0, 2, 0, 0, 0],
-    overNumber: 4
-  });
-
-  // Mock batting data
-  const [battingStats] = useState([
-    {
-      name: 'Kieron Pollard',
-      runs: 2,
-      balls: 5,
-      fours: 0,
-      sixes: 0,
-      strikeRate: 40.00,
-      isStriker: true
-    },
-    {
-      name: 'Nicholas Pooran',
-      runs: 14,
-      balls: 12,
-      fours: 1,
-      sixes: 1,
-      strikeRate: 116.67,
-      isStriker: false
-    },
-    {
-      name: 'Bhuvneshwar Kumar',
-      runs: 1.5,
-      balls: 0,
-      fours: 4,
-      sixes: 1,
-      strikeRate: 2.18,
-      isStriker: false
-    }
-  ]);
+  const { currentMatch, updateScoreboard, setLoading, setError } = useMatchStore();
+  
+  const [showWicketModal, setShowWicketModal] = useState(false);
+  const [showBowlerModal, setShowBowlerModal] = useState(false);
+  const [newBatsman, setNewBatsman] = useState('');
+  const [newBowler, setNewBowler] = useState('');
+  const [wicketType, setWicketType] = useState('bowled');
+  const [lastBallData, setLastBallData] = useState<BallData | null>(null);
 
   useEffect(() => {
-    const loadMatch = async () => {
-      if (matchId) {
-        try {
-          const matchData = await getMatchById(matchId);
-          setMatch(matchData);
-        } catch (error) {
-          console.error('Error loading match:', error);
-        }
+    if (currentMatch) {
+      loadScoreboard();
+    }
+  }, [currentMatch]);
+
+  const loadScoreboard = async () => {
+    if (!currentMatch) return;
+    
+    try {
+      const response = await fetchScoreboard(currentMatch.id);
+      updateScoreboard(response.data);
+    } catch (error) {
+      console.error('Error loading scoreboard:', error);
+    }
+  };
+
+  const handleBallSubmit = async (ballData: BallData) => {
+    if (!currentMatch) {
+      setError('No active match found');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await submitBall(currentMatch.id, ballData);
+      setLastBallData(ballData);
+      await loadScoreboard();
+      
+      // Check if wicket or over completed
+      if (ballData.isWicket) {
+        setShowWicketModal(true);
+      } else if (currentMatch.scoreboard.balls % 6 === 0) {
+        setShowBowlerModal(true);
       }
-    };
-    loadMatch();
-  }, [matchId]);
-
-  const handleScore = async (run: number) => {
-    if (!matchId) return;
-
-    const ballUpdate: BallUpdate = { run };
-    
-    try {
-      await updateScore(matchId, ballUpdate);
-      
-      // Update local state
-      setCurrentScore(prev => ({
-        ...prev,
-        runs: prev.runs + run,
-        balls: prev.balls + 1 > 5 ? 0 : prev.balls + 1,
-        overs: prev.balls + 1 > 5 ? prev.overs + 1 : prev.overs
-      }));
-
-      // Update current over
-      setCurrentOver(prev => ({
-        ...prev,
-        balls: [...prev.balls, run].slice(-6)
-      }));
     } catch (error) {
-      console.error('Error updating score:', error);
+      setError('Failed to submit ball. Please try again.');
+      console.error('Error submitting ball:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleWicket = async () => {
-    if (!matchId) return;
-
-    const ballUpdate: BallUpdate = { run: 0, isWicket: true };
-    
-    try {
-      await updateScore(matchId, ballUpdate);
-      
-      setCurrentScore(prev => ({
-        ...prev,
-        wickets: prev.wickets + 1,
-        balls: prev.balls + 1 > 5 ? 0 : prev.balls + 1,
-        overs: prev.balls + 1 > 5 ? prev.overs + 1 : prev.overs
-      }));
-
-      setCurrentOver(prev => ({
-        ...prev,
-        balls: [...prev.balls, 'W'].slice(-6)
-      }));
-    } catch (error) {
-      console.error('Error updating wicket:', error);
-    }
+  const handleRunsClick = (runs: number) => {
+    handleBallSubmit({
+      ballType: 'normal',
+      runs,
+      isWicket: false,
+    });
   };
 
-  const handleExtra = async (type: 'wide' | 'noBall' | 'bye' | 'legBye') => {
-    if (!matchId) return;
+  const handleExtraClick = (type: 'wide' | 'noBall' | 'bye' | 'legBye') => {
+    const runs = currentMatch?.settings[type === 'wide' ? 'wideBall' : 'noBall']?.runs || 1;
+    handleBallSubmit({
+      ballType: type,
+      runs: type === 'bye' || type === 'legBye' ? 1 : runs,
+      isWicket: false,
+    });
+  };
 
-    const ballUpdate: BallUpdate = { run: 1, extraType: type };
+  const handleWicket = () => {
+    setShowWicketModal(true);
+  };
+
+  const confirmWicket = () => {
+    if (!newBatsman.trim()) return;
     
-    try {
-      await updateScore(matchId, ballUpdate);
-      
-      setCurrentScore(prev => ({
-        ...prev,
-        runs: prev.runs + 1
-      }));
-    } catch (error) {
-      console.error('Error updating extra:', error);
-    }
+    handleBallSubmit({
+      ballType: 'wicket',
+      runs: 0,
+      isWicket: true,
+      wicketType: wicketType as any,
+      newBatsman: newBatsman.trim(),
+    });
+    
+    setShowWicketModal(false);
+    setNewBatsman('');
+  };
+
+  const confirmNewBowler = () => {
+    if (!newBowler.trim()) return;
+    // Handle new bowler logic here
+    setShowBowlerModal(false);
+    setNewBowler('');
   };
 
   const handleUndo = () => {
@@ -138,132 +114,270 @@ const ScoreEntryPage: React.FC = () => {
     console.log('Undo last ball');
   };
 
-  if (!match) {
+  const scoreboard = currentMatch?.scoreboard;
+
+  if (!scoreboard) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p>Loading match...</p>
-        </div>
+      <div className="p-4 max-w-md mx-auto">
+        <Card>
+          <p className="text-center text-gray-600">Loading match data...</p>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-blue-600 text-white p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/history')}
-            className="p-2 hover:bg-blue-700 rounded"
+    <div className="p-4 max-w-md mx-auto space-y-4">
+      {/* Match Header */}
+      <Card>
+        <div className="text-center mb-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            {scoreboard.hostTeam} vs {scoreboard.visitorTeam}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {scoreboard.battingTeam} won the toss and opted to bat first
+          </p>
+        </div>
+      </Card>
+
+      {/* Score Display */}
+      <Card>
+        <div className="text-center">
+          <div className="text-4xl font-bold text-primary-600 mb-2">
+            {scoreboard.score}/{scoreboard.wickets}
+          </div>
+          <div className="text-lg text-gray-600">
+            Overs: {formatOvers(scoreboard.balls)}
+          </div>
+          {scoreboard.target && (
+            <div className="text-sm text-gray-500 mt-2">
+              Target: {scoreboard.target} | Need {scoreboard.target - scoreboard.score} runs
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Current Players */}
+      <Card>
+        <h3 className="font-semibold text-gray-900 mb-3">Current Batsmen</h3>
+        <div className="space-y-2">
+          {scoreboard.currentBatsmen.map((batsman, index) => (
+            <div key={index} className="flex justify-between items-center">
+              <span className={`font-medium ${index === 0 ? 'text-primary-600' : 'text-gray-700'}`}>
+                {batsman.name} {index === 0 && '*'}
+              </span>
+              <span className="text-sm text-gray-600">
+                {batsman.runs}({batsman.balls}) SR: {calculateStrikeRate(batsman.runs, batsman.balls).toFixed(1)}
+              </span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex justify-between items-center">
+            <span className="font-medium text-gray-700">
+              {scoreboard.currentBowler.name}
+            </span>
+            <span className="text-sm text-gray-600">
+              {formatOvers(scoreboard.currentBowler.overs * 6)}-{scoreboard.currentBowler.maidens}-{scoreboard.currentBowler.runs}-{scoreboard.currentBowler.wickets}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* This Over */}
+      <Card>
+        <h3 className="font-semibold text-gray-900 mb-3">This Over</h3>
+        <div className="flex space-x-2">
+          {/* Display current over balls */}
+          {[...Array(6)].map((_, index) => (
+            <div
+              key={index}
+              className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-sm"
+            >
+              {index < (scoreboard.balls % 6) ? '1' : ''}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Ball Input Options */}
+      <Card>
+        <div className="space-y-4">
+          {/* Extra Options */}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" className="rounded text-primary-600" />
+              <span className="text-sm">Wide</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" className="rounded text-primary-600" />
+              <span className="text-sm">No Ball</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" className="rounded text-primary-600" />
+              <span className="text-sm">Byes</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" className="rounded text-primary-600" />
+              <span className="text-sm">Leg Byes</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input type="checkbox" className="rounded text-primary-600" />
+              <span className="text-sm">Wicket</span>
+            </label>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" className="w-full">
+              Retire
+            </Button>
+            <Button variant="primary" className="w-full">
+              Swap Batsman
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Run Buttons */}
+      <Card>
+        <div className="space-y-4">
+          <Button
+            variant="secondary"
+            icon={RotateCcw}
+            className="w-full"
+            onClick={handleUndo}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold">{match.hostTeam} v/s {match.visitorTeam}</h1>
-          <div className="flex space-x-2">
-            <button className="p-2 hover:bg-blue-700 rounded">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
-            <button className="p-2 hover:bg-blue-700 rounded">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Match Info */}
-      <div className="bg-white p-4 border-b">
-        <div className="text-sm text-gray-600 mb-2">
-          {match.hostTeam}, 1st Inning
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-bold">{currentScore.runs} - {currentScore.wickets}</span>
-            <span className="text-lg ml-2">({currentScore.overs}.{currentScore.balls})</span>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-600">CRR</div>
-            <div className="text-lg font-semibold">5.74</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Batting Stats */}
-      <div className="bg-white mx-4 mt-4 rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-2 px-3 text-left text-xs font-medium text-gray-700 uppercase">Batsman</th>
-              <th className="py-2 px-3 text-center text-xs font-medium text-gray-700 uppercase">R</th>
-              <th className="py-2 px-3 text-center text-xs font-medium text-gray-700 uppercase">B</th>
-              <th className="py-2 px-3 text-center text-xs font-medium text-gray-700 uppercase">4s</th>
-              <th className="py-2 px-3 text-center text-xs font-medium text-gray-700 uppercase">6s</th>
-              <th className="py-2 px-3 text-center text-xs font-medium text-gray-700 uppercase">SR</th>
-            </tr>
-          </thead>
-          <tbody>
-            {battingStats.map((player, index) => (
-              <tr key={index} className={`border-b border-gray-200 ${player.isStriker ? 'bg-blue-50' : ''}`}>
-                <td className="py-2 px-3 text-sm">
-                  <div className="flex items-center">
-                    {player.isStriker && <span className="mr-1">*</span>}
-                    {player.name}
-                  </div>
-                </td>
-                <td className="py-2 px-3 text-sm text-center">{player.runs}</td>
-                <td className="py-2 px-3 text-sm text-center">{player.balls}</td>
-                <td className="py-2 px-3 text-sm text-center">{player.fours}</td>
-                <td className="py-2 px-3 text-sm text-center">{player.sixes}</td>
-                <td className="py-2 px-3 text-sm text-center">{player.strikeRate.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Current Over */}
-      <div className="mx-4 mt-4">
-        <OverDisplay currentOver={currentOver} />
-      </div>
-
-      {/* Score Pad */}
-      <div className="mx-4 mt-4 mb-4">
-        <ScorePad
-          onScore={handleScore}
-          onWicket={handleWicket}
-          onExtra={handleExtra}
-          onUndo={handleUndo}
-        />
-      </div>
-
-      {/* Action Footer */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
-        <div className="grid grid-cols-4 gap-2 p-4">
-          <button className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            Score
-          </button>
-          <button className="py-3 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium">
             Undo
-          </button>
-          <button className="py-3 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium">
-            Retire
-          </button>
-          <button 
-            onClick={() => navigate(`/scoreboard/${matchId}`)}
-            className="py-3 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium"
-          >
-            Board
-          </button>
-        </div>
-      </div>
+          </Button>
+          
+          <div className="grid grid-cols-4 gap-2">
+            {[0, 1, 2, 3, 4, 5, 6].map((runs) => (
+              <Button
+                key={runs}
+                variant={runs === 6 ? 'primary' : runs === 4 ? 'secondary' : 'outline'}
+                className="aspect-square"
+                onClick={() => handleRunsClick(runs)}
+              >
+                {runs}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              className="aspect-square text-xs"
+              onClick={() => console.log('More options')}
+            >
+              ...
+            </Button>
+          </div>
 
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" className="w-full">
+              Partnerships
+            </Button>
+            <Button variant="outline" className="w-full">
+              Extras
+            </Button>
+            <Button
+              variant="outline"
+              icon={BarChart3}
+              className="w-full"
+              onClick={() => navigate('/scoreboard')}
+            >
+              Stats
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Wicket Modal */}
+      <Modal
+        isOpen={showWicketModal}
+        onClose={() => setShowWicketModal(false)}
+        title="Wicket Fallen"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Wicket Type
+            </label>
+            <select
+              value={wicketType}
+              onChange={(e) => setWicketType(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="bowled">Bowled</option>
+              <option value="caught">Caught</option>
+              <option value="lbw">LBW</option>
+              <option value="runout">Run Out</option>
+              <option value="stumped">Stumped</option>
+              <option value="hitwicket">Hit Wicket</option>
+            </select>
+          </div>
+          
+          <Input
+            label="New Batsman"
+            value={newBatsman}
+            onChange={(e) => setNewBatsman(e.target.value)}
+            placeholder="Enter new batsman name"
+            required
+          />
+
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowWicketModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={confirmWicket}
+            >
+              Confirm
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* New Bowler Modal */}
+      <Modal
+        isOpen={showBowlerModal}
+        onClose={() => setShowBowlerModal(false)}
+        title="New Over"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">Over completed. Please select new bowler.</p>
+          
+          <Input
+            label="New Bowler"
+            value={newBowler}
+            onChange={(e) => setNewBowler(e.target.value)}
+            placeholder="Enter new bowler name"
+            required
+          />
+
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowBowlerModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={confirmNewBowler}
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

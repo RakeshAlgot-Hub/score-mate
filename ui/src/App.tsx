@@ -1,27 +1,31 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import FooterNav from './components/FooterNav';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
+import TeamsPage from './pages/TeamsPage';
 import NewMatchPage from './pages/NewMatchPage';
+import AdvancedSettingsPage from './pages/AdvancedSettingsPage';
+import SelectOpeningPlayersPage from './pages/SelectOpeningPlayersPage';
 import ScoreEntryPage from './pages/ScoreEntryPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import HistoryPage from './pages/HistoryPage';
-import PlayerProfilePage from './pages/PlayerProfilePage';
-import TeamsPage from './pages/TeamsPage';
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-100 pb-16">
+      <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route path="/" element={<Navigate to="/history" replace />} />
-          <Route path="/new-match" element={<NewMatchPage />} />
-          <Route path="/score-entry/:matchId" element={<ScoreEntryPage />} />
-          <Route path="/scoreboard/:matchId" element={<ScoreboardPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/player/:playerId" element={<PlayerProfilePage />} />
-          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="new-match" element={<NewMatchPage />} />
+            <Route path="advanced-settings" element={<AdvancedSettingsPage />} />
+            <Route path="select-players" element={<SelectOpeningPlayersPage />} />
+            <Route path="scoring" element={<ScoreEntryPage />} />
+            <Route path="scoreboard" element={<ScoreboardPage />} />
+            <Route path="history" element={<HistoryPage />} />
+          </Route>
         </Routes>
-        <FooterNav />
       </div>
     </Router>
   );

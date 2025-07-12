@@ -1,100 +1,185 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllMatches } from '../services/matchService';
-import { MatchSummary } from '../types';
-import MatchCard from '../components/MatchCard';
+import { Play, BarChart3, Trash2, Calendar } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import { useMatchStore } from '../store/matchStore';
+import { fetchMatches } from '../services/api';
+import { Match } from '../types';
 
 const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const [matches, setMatches] = useState<MatchSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { setCurrentMatch, setLoading, setError } = useMatchStore();
+  const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
-    const loadMatches = async () => {
-      try {
-        const matchData = await getAllMatches();
-        setMatches(matchData);
-      } catch (error) {
-        console.error('Error loading matches:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadMatches();
   }, []);
 
-  const handleResume = (matchId: string) => {
-    navigate(`/score-entry/${matchId}`);
+  const loadMatches = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetchMatches();
+      setMatches(response.data);
+    } catch (error) {
+      setError('Failed to load match history');
+      console.error('Error loading matches:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleViewScoreboard = (matchId: string) => {
-    navigate(`/scoreboard/${matchId}`);
+  const handleResumeMatch = (match: Match) => {
+    setCurrentMatch({
+      id: match.id,
+      scoreboard: {} as any, // Will be loaded in scoring page
+      settings: {} as any, // Will be loaded in scoring page
+    });
+    navigate('/scoring');
   };
 
-  if (loading) {
+  const handleViewScoreboard = (match: Match) => {
+    setCurrentMatch({
+      id: match.id,
+      scoreboard: {} as any, // Will be loaded in scoreboard page
+      settings: {} as any,
+    });
+    navigate('/scoreboard');
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'text-green-600 bg-green-50';
+      case 'completed':
+        return 'text-blue-600 bg-blue-50';
+      case 'abandoned':
+        return 'text-red-600 bg-red-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (matches.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p>Loading matches...</p>
-        </div>
+      <div className="p-4 max-w-md mx-auto pb-20">
+        <Card>
+          <div className="text-center py-8">
+            <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No matches yet</h3>
+            <p className="text-gray-600 mb-6">Start your first match to see it here</p>
+            <Button
+              onClick={() => navigate('/teams')}
+              variant="primary"
+              size="lg"
+            >
+              Start New Match
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-blue-600 text-white p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Cricket scorer</h1>
-          <div className="flex space-x-2">
-            <button className="p-2 hover:bg-blue-700 rounded">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.06 11c.07-4.55 3.75-8.21 8.31-8.27s8.27 3.75 8.33 8.31" />
-              </svg>
-            </button>
-            <button className="p-2 hover:bg-blue-700 rounded">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          </div>
-        </div>
+    <div className="p-4 max-w-md mx-auto space-y-4 pb-20">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900">Match History</h2>
+        <Button
+          onClick={() => navigate('/teams')}
+          variant="primary"
+          size="sm"
+        >
+          New Match
+        </Button>
       </div>
 
-      <div className="p-4">
-        {matches.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-500 mb-4">
-              <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+      <div className="space-y-3">
+        {matches.map((match) => (
+          <Card key={match.id} className="relative">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize">
+                    {match.hostTeam.slice(0, 3).toUpperCase()}
+                  </span>
+                  <span className="text-xs text-gray-500">vs</span>
+                  <span className="text-xs px-2 py-1 rounded-full font-medium capitalize">
+                    {match.visitorTeam.slice(0, 3).toUpperCase()}
+                  </span>
+                </div>
+                
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  {match.hostTeam} vs {match.visitorTeam}
+                </h3>
+                
+                <p className="text-sm text-gray-600 mb-2">
+                  {match.currentScore}
+                </p>
+                
+                <p className="text-xs text-gray-500">
+                  {match.tossWonBy} won toss, opted to {match.optedTo}
+                </p>
+              </div>
+              
+              <div className="text-right">
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
+                  {match.status}
+                </span>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatDate(match.createdAt)}
+                </p>
+              </div>
             </div>
-            <p className="text-gray-600 mb-4">No matches found</p>
-            <button
-              onClick={() => navigate('/new-match')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Start New Match
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {matches.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                onResume={handleResume}
-                onViewScoreboard={handleViewScoreboard}
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
+            <div className="flex space-x-2">
+              {match.status === 'active' && (
+                <Button
+                  onClick={() => handleResumeMatch(match)}
+                  variant="primary"
+                  size="sm"
+                  icon={Play}
+                  className="flex-1"
+                >
+                  Resume
+                </Button>
+              )}
+              
+              <Button
+                onClick={() => handleViewScoreboard(match)}
+                variant="outline"
+                size="sm"
+                icon={BarChart3}
+                className="flex-1"
+              >
+                Scoreboard
+              </Button>
+              
+              <Button
+                onClick={() => console.log('Delete match', match.id)}
+                variant="outline"
+                size="sm"
+                icon={Trash2}
+                className="text-red-600 hover:text-red-700 hover:border-red-300"
+              >
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };

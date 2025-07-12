@@ -1,132 +1,203 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createMatch } from '../services/matchService';
-import { Match } from '../types';
+import { Settings, Play } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Card from '../components/ui/Card';
+import { useMatchStore } from '../store/matchStore';
+import { createMatch } from '../services/api';
+import { MatchConfig, Team } from '../types';
 
 const NewMatchPage: React.FC = () => {
   const navigate = useNavigate();
+  const { setCurrentMatch, setLoading, setError } = useMatchStore();
+  
   const [formData, setFormData] = useState({
     hostTeam: '',
     visitorTeam: '',
+    tossWonBy: 'host' as 'host' | 'visitor',
+    optedTo: 'bat' as 'bat' | 'bowl',
     overs: 20,
-    tossWinner: '',
-    decision: 'bat' as 'bat' | 'bowl'
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.hostTeam.trim()) {
+      newErrors.hostTeam = 'Host team name is required';
+    }
+    
+    if (!formData.visitorTeam.trim()) {
+      newErrors.visitorTeam = 'Visitor team name is required';
+    }
+    
+    if (formData.hostTeam.trim() === formData.visitorTeam.trim()) {
+      newErrors.visitorTeam = 'Team names must be different';
+    }
+    
+    if (formData.overs < 1 || formData.overs > 50) {
+      newErrors.overs = 'Overs must be between 1 and 50';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setError(null);
+
+    const matchConfig: MatchConfig = {
+      hostTeam: { name: formData.hostTeam.trim(), players: [] },
+      visitorTeam: { name: formData.visitorTeam.trim(), players: [] },
+      tossWonBy: formData.tossWonBy,
+      optedTo: formData.optedTo,
+      overs: formData.overs,
+      settings: {
+        playersPerTeam: 11,
+        noBall: { reball: true, runs: 1 },
+        wideBall: { reball: true, runs: 1 },
+      },
+    };
+
     try {
-      const match = await createMatch(formData);
-      navigate(`/score-entry/${match.id}`);
+      const response = await createMatch(matchConfig);
+      const matchId = response.data.id;
+      
+      setCurrentMatch({
+        id: matchId,
+        scoreboard: response.data.scoreboard,
+        settings: matchConfig.settings,
+      });
+      
+      navigate('/advanced-settings');
     } catch (error) {
+      setError('Failed to create match. Please try again.');
       console.error('Error creating match:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-md mx-auto">
-        <div className="bg-blue-600 text-white p-4 rounded-t-lg">
-          <h1 className="text-xl font-bold">New Match</h1>
-        </div>
+    <div className="p-4 max-w-md mx-auto">
+      <Card>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Match Details</h2>
         
-        <div className="bg-white p-6 rounded-b-lg shadow-md">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Host Team
-              </label>
-              <input
-                type="text"
-                value={formData.hostTeam}
-                onChange={(e) => setFormData(prev => ({ ...prev, hostTeam: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
+        <Input
+          label="Host Team"
+          value={formData.hostTeam}
+          onChange={(e) => setFormData({ ...formData, hostTeam: e.target.value })}
+          placeholder="Enter host team name"
+          required
+          error={errors.hostTeam}
+        />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Visitor Team
-              </label>
-              <input
-                type="text"
-                value={formData.visitorTeam}
-                onChange={(e) => setFormData(prev => ({ ...prev, visitorTeam: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
+        <Input
+          label="Visitor Team"
+          value={formData.visitorTeam}
+          onChange={(e) => setFormData({ ...formData, visitorTeam: e.target.value })}
+          placeholder="Enter visitor team name"
+          required
+          error={errors.visitorTeam}
+        />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Overs
-              </label>
-              <select
-                value={formData.overs}
-                onChange={(e) => setFormData(prev => ({ ...prev, overs: parseInt(e.target.value) }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value={5}>5 Overs</option>
-                <option value={10}>10 Overs</option>
-                <option value={20}>20 Overs</option>
-                <option value={50}>50 Overs</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Toss Winner
-              </label>
-              <select
-                value={formData.tossWinner}
-                onChange={(e) => setFormData(prev => ({ ...prev, tossWinner: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select team</option>
-                <option value={formData.hostTeam}>{formData.hostTeam}</option>
-                <option value={formData.visitorTeam}>{formData.visitorTeam}</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Decision
-              </label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="bat"
-                    checked={formData.decision === 'bat'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, decision: e.target.value as 'bat' | 'bowl' }))}
-                    className="mr-2"
-                  />
-                  Bat First
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="bowl"
-                    checked={formData.decision === 'bowl'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, decision: e.target.value as 'bat' | 'bowl' }))}
-                    className="mr-2"
-                  />
-                  Bowl First
-                </label>
-              </div>
-            </div>
-
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Toss Won By <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
             <button
-              type="submit"
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              type="button"
+              onClick={() => setFormData({ ...formData, tossWonBy: 'host' })}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                formData.tossWonBy === 'host'
+                  ? 'border-primary-600 bg-primary-50 text-primary-600'
+                  : 'border-gray-300 text-gray-700 hover:border-primary-300'
+              }`}
             >
-              Start Match
+              Host Team
             </button>
-          </form>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, tossWonBy: 'visitor' })}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                formData.tossWonBy === 'visitor'
+                  ? 'border-primary-600 bg-primary-50 text-primary-600'
+                  : 'border-gray-300 text-gray-700 hover:border-primary-300'
+              }`}
+            >
+              Visitor Team
+            </button>
+          </div>
         </div>
-      </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Opted To <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, optedTo: 'bat' })}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                formData.optedTo === 'bat'
+                  ? 'border-primary-600 bg-primary-50 text-primary-600'
+                  : 'border-gray-300 text-gray-700 hover:border-primary-300'
+              }`}
+            >
+              Bat First
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, optedTo: 'bowl' })}
+              className={`p-3 rounded-lg border-2 transition-colors ${
+                formData.optedTo === 'bowl'
+                  ? 'border-primary-600 bg-primary-50 text-primary-600'
+                  : 'border-gray-300 text-gray-700 hover:border-primary-300'
+              }`}
+            >
+              Bowl First
+            </button>
+          </div>
+        </div>
+
+        <Input
+          label="Overs"
+          type="number"
+          value={formData.overs}
+          onChange={(e) => setFormData({ ...formData, overs: parseInt(e.target.value) || 0 })}
+          placeholder="Enter number of overs"
+          required
+          error={errors.overs}
+        />
+
+        <div className="space-y-3 mt-6">
+          <Button
+            onClick={() => navigate('/advanced-settings')}
+            variant="outline"
+            size="lg"
+            icon={Settings}
+            className="w-full"
+          >
+            Advanced Settings
+          </Button>
+
+          <Button
+            onClick={handleSubmit}
+            variant="primary"
+            size="lg"
+            icon={Play}
+            className="w-full"
+          >
+            Start Match
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 };
