@@ -2,7 +2,6 @@ import axiosInstance from './http';
 import { BallData, MatchScoreboard, OpeningPlayers, ApiResponse } from '../types';
 
 export const submitBall = async (matchId: string, ballData: BallData): Promise<ApiResponse<{ scoreboard: MatchScoreboard }>> => {
-  console.log(`Submitting ball for match ${matchId}`, ballData);
   const response = await axiosInstance.post<ApiResponse<{ scoreboard: MatchScoreboard }>>(`/matches/${matchId}/ball`, ballData);
   return response.data;
 };

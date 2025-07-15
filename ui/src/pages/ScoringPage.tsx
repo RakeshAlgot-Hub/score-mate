@@ -14,8 +14,16 @@ import { ROUTES } from '../constants/appConstants';
 
 const ScoringPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentMatch, updateScoreboard, setLoading, setError, isLoading, getCurrentScore } = useMatchStore();
+  const {
+    currentMatch,
+    updateScoreboard,
+    setLoading,
+    setError,
+    isLoading,
+    getCurrentScore,
+  } = useMatchStore();
 
+  const [scoreboard, setScoreboard] = useState(currentMatch?.scoreboard ?? null);
   const [showWicketModal, setShowWicketModal] = useState(false);
   const [showBowlerModal, setShowBowlerModal] = useState(false);
   const [newBatsman, setNewBatsman] = useState('');
@@ -25,14 +33,20 @@ const ScoringPage: React.FC = () => {
 
   useEffect(() => {
     loadScoreboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (currentMatch?.scoreboard) {
+      setScoreboard(currentMatch.scoreboard);
+    }
+  }, [currentMatch]);
 
   const loadScoreboard = async () => {
     if (!currentMatch?.id) return;
     try {
       const response = await getScoreboard(currentMatch.id);
       updateScoreboard(response.result);
+      setScoreboard(response.result);
     } catch (error) {
       console.error('Error loading scoreboard:', error);
     }
@@ -49,9 +63,10 @@ const ScoringPage: React.FC = () => {
 
     try {
       const response = await submitBall(currentMatch.id, ballData);
+      console.log('Ball submitted:', ballData);
       updateScoreboard(response.result.scoreboard);
+      setScoreboard(response.result.scoreboard);
 
-      // Check if wicket or over completed
       if (ballData.isWicket) {
         setShowWicketModal(true);
       } else if (response.result.scoreboard.balls % 6 === 0) {
@@ -73,7 +88,8 @@ const ScoringPage: React.FC = () => {
   };
 
   const handleExtraClick = (type: 'wide' | 'noBall' | 'bye' | 'legBye') => {
-    const runs = currentMatch?.settings[type === 'wide' ? 'wideBall' : 'noBall']?.runs || 1;
+    const runs =
+      currentMatch?.settings[type === 'wide' ? 'wideBall' : 'noBall']?.runs || 1;
     handleBallSubmit({
       ballType: type,
       runs: type === 'bye' || type === 'legBye' ? 1 : runs,
@@ -87,7 +103,7 @@ const ScoringPage: React.FC = () => {
 
   const confirmWicket = () => {
     if (!newBatsman.trim()) return;
-    
+
     handleBallSubmit({
       ballType: 'wicket',
       runs: 0,
@@ -95,14 +111,14 @@ const ScoringPage: React.FC = () => {
       wicketType: wicketType as any,
       newBatsman: newBatsman.trim(),
     });
-    
+
     setShowWicketModal(false);
     setNewBatsman('');
   };
 
   const confirmNewBowler = () => {
     if (!newBowler.trim()) return;
-    // Handle new bowler logic here
+    // You can handle updating the bowler in backend here if needed
     setShowBowlerModal(false);
     setNewBowler('');
   };
@@ -114,6 +130,7 @@ const ScoringPage: React.FC = () => {
     try {
       const response = await undoLastBall(currentMatch.id);
       updateScoreboard(response.result.scoreboard);
+      setScoreboard(response.result.scoreboard);
     } catch (error) {
       setError(handleApiError(error));
     } finally {
@@ -121,13 +138,13 @@ const ScoringPage: React.FC = () => {
     }
   };
 
-  const scoreboard = currentMatch?.scoreboard;
-
-  if (!scoreboard) {
+  if (!scoreboard || isLoading) {
     return (
       <div className="p-4 max-w-md mx-auto">
         <Card>
-          <p className="text-center text-gray-600">Loading match data...</p>
+          <p className="text-center text-gray-600">
+            {isLoading ? 'Updating scoreboard...' : 'Loading match data...'}
+          </p>
         </Card>
       </div>
     );
@@ -151,9 +168,7 @@ const ScoringPage: React.FC = () => {
           <h2 className="text-lg font-bold text-gray-900">
             {scoreboard.hostTeam} vs {scoreboard.visitorTeam}
           </h2>
-          <p className="text-sm text-gray-600">
-            {scoreboard.battingTeam} batting
-          </p>
+          <p className="text-sm text-gray-600">{scoreboard.battingTeam} batting</p>
         </div>
       </Card>
 
@@ -177,23 +192,31 @@ const ScoringPage: React.FC = () => {
         <div className="space-y-2">
           {scoreboard.currentBatsmen.map((batsman, index) => (
             <div key={index} className="flex justify-between items-center">
-              <span className={`font-medium ${index === 0 ? 'text-primary-600' : 'text-gray-700'}`}>
+              <span
+                className={`font-medium ${
+                  index === 0 ? 'text-primary-600' : 'text-gray-700'
+                }`}
+              >
                 {batsman.name} {index === 0 && '*'}
               </span>
               <span className="text-sm text-gray-600">
-                {batsman.runs}({batsman.balls}) SR: {calculateStrikeRate(batsman.runs, batsman.balls).toFixed(1)}
+                {batsman.runs}({batsman.balls}) SR:{' '}
+                {calculateStrikeRate(batsman.runs, batsman.balls).toFixed(1)}
               </span>
             </div>
           ))}
         </div>
-        
+
         <div className="mt-4 pt-3 border-t border-gray-200">
           <div className="flex justify-between items-center">
             <span className="font-medium text-gray-700">
               {scoreboard.currentBowler.name}
             </span>
             <span className="text-sm text-gray-600">
-              {formatOvers(scoreboard.currentBowler.overs * 6)}-{scoreboard.currentBowler.maidens}-{scoreboard.currentBowler.runs}-{scoreboard.currentBowler.wickets}
+              {formatOvers(scoreboard.currentBowler.overs * 6)}-
+              {scoreboard.currentBowler.maidens}-
+              {scoreboard.currentBowler.runs}-
+              {scoreboard.currentBowler.wickets}
             </span>
           </div>
         </div>
@@ -268,7 +291,7 @@ const ScoringPage: React.FC = () => {
               <option value="hitwicket">Hit Wicket</option>
             </select>
           </div>
-          
+
           <Input
             label="New Batsman"
             value={newBatsman}
@@ -304,7 +327,7 @@ const ScoringPage: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-600">Over completed. Please select new bowler.</p>
-          
+
           <Input
             label="New Bowler"
             value={newBowler}

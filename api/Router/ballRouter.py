@@ -11,6 +11,7 @@ router = APIRouter(tags=["ball"])
 @router.post("/matches/{matchId}/ball")
 async def recordBall(matchId: str, ballData: BallEvent):
     try:
+        print(ballData.model_dump())
         logger.info(f"Recording ball event for match: {matchId}")
         match = getMatchFromDb({"id": matchId})
         if not match:
