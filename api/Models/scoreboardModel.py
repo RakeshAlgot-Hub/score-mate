@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+from Models.ballModel import BallEvent
 
 
 class BatsmanStats(BaseModel):
@@ -57,6 +58,7 @@ class Scoreboard(BaseModel):
     allBowlers: Optional[List[BowlerStats]] = Field(default_factory=list)
     extras: Optional[Extras] = Field(default_factory=Extras)
     fallOfWickets: Optional[List[FallOfWicket]] = Field(default_factory=list)
+    ballHistory: Optional[List[BallEvent]] = Field(default_factory=list)  # ✅ Added this
     isComplete: Optional[bool] = False
     result: Optional[str] = None
     lastUpdated: Optional[datetime] = None

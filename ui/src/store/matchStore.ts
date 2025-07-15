@@ -3,12 +3,10 @@ import { persist } from 'zustand/middleware';
 import { CurrentMatch, MatchScoreboard, MatchSettings, ApiError } from '../types';
 
 interface MatchStore {
-  // State
   currentMatch: CurrentMatch | null;
   isLoading: boolean;
   error: string | null;
 
-  // Actions
   setCurrentMatch: (match: CurrentMatch) => void;
   updateScoreboard: (scoreboard: MatchScoreboard) => void;
   updateSettings: (settings: MatchSettings) => void;
@@ -16,7 +14,6 @@ interface MatchStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Computed
   getCurrentScore: () => string;
   isMatchActive: () => boolean;
 }
@@ -24,29 +21,26 @@ interface MatchStore {
 export const useMatchStore = create<MatchStore>()(
   persist(
     (set, get) => ({
-      // Initial state
       currentMatch: null,
       isLoading: false,
       error: null,
 
-      // Actions
       setCurrentMatch: (match: CurrentMatch) => {
         set({
-          currentMatch: match,
-          error: null
+          currentMatch: { ...match }, // ✅ create new object
+          error: null,
         });
       },
 
-      updateScoreboard: (newScoreboard) => {
-        set(state => {
-          if (!state.currentMatch) return state;
-          return {
-            ...state,
-            currentMatch: {
-              ...state.currentMatch,
-              scoreboard: newScoreboard,
-            }
-          };
+      updateScoreboard: (scoreboard: MatchScoreboard) => {
+        const current = get().currentMatch;
+        if (!current) return;
+
+        set({
+          currentMatch: {
+            ...current,
+            scoreboard: { ...scoreboard }, // ✅ important: copy to trigger re-render
+          },
         });
       },
 
@@ -56,7 +50,7 @@ export const useMatchStore = create<MatchStore>()(
           set({
             currentMatch: {
               ...current,
-              settings,
+              settings: { ...settings },
             },
           });
         }
@@ -65,7 +59,7 @@ export const useMatchStore = create<MatchStore>()(
       clearCurrentMatch: () => {
         set({
           currentMatch: null,
-          error: null
+          error: null,
         });
       },
 
@@ -77,17 +71,14 @@ export const useMatchStore = create<MatchStore>()(
         set({ error });
       },
 
-      // Computed getters
       getCurrentScore: () => {
         const match = get().currentMatch;
         if (!match?.scoreboard) return '0/0 (0.0)';
-        
+
         const { score, wickets, balls } = match.scoreboard;
         const overs = Math.floor(balls / 6);
-        const remainingBalls = balls % 6;
-        const oversDisplay = remainingBalls === 0 ? `${overs}` : `${overs}.${remainingBalls}`;
-        
-        return `${score}/${wickets} (${oversDisplay})`;
+        const remaining = balls % 6;
+        return `${score}/${wickets} (${overs}.${remaining})`;
       },
 
       isMatchActive: () => {
@@ -98,22 +89,19 @@ export const useMatchStore = create<MatchStore>()(
     {
       name: 'scoremate-match-store',
       partialize: (state) => ({
-        currentMatch: state.currentMatch ? {
-          id: state.currentMatch.id,
-          // Only persist essential data, reload full data from API
-        } : null,
+        currentMatch: state.currentMatch
+          ? {
+              id: state.currentMatch.id, // only minimal info
+            }
+          : null,
       }),
     }
   )
 );
 
-// Error handling helper
+// 🔧 Central error helper
 export const handleApiError = (error: ApiError | any): string => {
-  if (error?.message) {
-    return error.message;
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
+  if (error?.message) return error.message;
+  if (typeof error === 'string') return error;
   return 'An unexpected error occurred. Please try again.';
 };

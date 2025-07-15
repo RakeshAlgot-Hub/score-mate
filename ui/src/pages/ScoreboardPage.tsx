@@ -17,20 +17,15 @@ const ScoreboardPage: React.FC = () => {
     }
   }, [currentMatch]);
 
-  const loadScoreboard = async () => {
-    if (!currentMatch) return;
-    
-    setLoading(true);
-    try {
-      const response = await getScoreboard(currentMatch.id);
-      updateScoreboard(response.result);
-    } catch (error) {
-      setError(handleApiError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
+ const loadScoreboard = async () => {
+  if (!currentMatch?.id) return;
+  try {
+    const response = await getScoreboard(currentMatch.id);
+    updateScoreboard(response.result); // ✅ updates Zustand store
+  } catch (error) {
+    console.error('Error loading scoreboard:', error);
+  }
+};
   const formatOvers = (balls: number): string => {
     const overs = Math.floor(balls / 6);
     const remainingBalls = balls % 6;
@@ -64,7 +59,7 @@ const ScoreboardPage: React.FC = () => {
           <p className="text-sm text-gray-600 mb-4">
             {scoreboard.battingTeam} batting
           </p>
-          
+
           <div className="bg-primary-50 rounded-lg p-4 mb-4">
             <h3 className="text-lg font-semibold text-primary-600 mb-2">
               {scoreboard.battingTeam}
@@ -84,7 +79,7 @@ const ScoreboardPage: React.FC = () => {
       {/* Batting Statistics */}
       <Card>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Batsman</h3>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -104,9 +99,9 @@ const ScoreboardPage: React.FC = () => {
                     <div>
                       <span className="font-medium">
                         {batsman.name}
-                        {scoreboard.currentBatsmen.some(cb => cb.name === batsman.name) && 
+                        {scoreboard.currentBatsmen.some(cb => cb.name === batsman.name) && (
                           <span className="text-primary-600 ml-1">*</span>
-                        }
+                        )}
                       </span>
                       {batsman.isOut && (
                         <div className="text-xs text-gray-500">{batsman.dismissal}</div>
@@ -134,7 +129,7 @@ const ScoreboardPage: React.FC = () => {
           <div className="flex justify-between items-center">
             <span className="font-medium text-gray-700">Extras</span>
             <span className="text-sm text-gray-600">
-              {scoreboard.extras.total} (b {scoreboard.extras.byes}, lb {scoreboard.extras.legByes}, 
+              {scoreboard.extras.total} (b {scoreboard.extras.byes}, lb {scoreboard.extras.legByes},
               w {scoreboard.extras.wides}, nb {scoreboard.extras.noBalls}, p {scoreboard.extras.penalties})
             </span>
           </div>
@@ -150,7 +145,7 @@ const ScoreboardPage: React.FC = () => {
       {/* Bowling Statistics */}
       <Card>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Bowler</h3>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -168,9 +163,9 @@ const ScoreboardPage: React.FC = () => {
                 <tr key={index} className="border-b border-gray-100">
                   <td className="py-2 font-medium">
                     {bowler.name}
-                    {bowler.name === scoreboard.currentBowler.name && 
+                    {bowler.name === scoreboard.currentBowler.name && (
                       <span className="text-primary-600 ml-1">*</span>
-                    }
+                    )}
                   </td>
                   <td className="text-center py-2">{formatOvers(bowler.overs * 6)}</td>
                   <td className="text-center py-2">{bowler.maidens}</td>
@@ -187,7 +182,7 @@ const ScoreboardPage: React.FC = () => {
       {/* Fall of Wickets */}
       <Card>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Fall of wickets</h3>
-        
+
         <div className="space-y-2">
           {scoreboard.fallOfWickets.map((wicket, index) => (
             <div key={index} className="flex justify-between items-center text-sm">
@@ -198,6 +193,26 @@ const ScoreboardPage: React.FC = () => {
             </div>
           ))}
         </div>
+      </Card>
+
+      {/* Ball History */}
+      <Card>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ball History</h3>
+        {scoreboard.ballHistory && scoreboard.ballHistory.length > 0 ? (
+          <div className="space-y-1 text-sm text-gray-700">
+            {scoreboard.ballHistory.map((ball, index) => (
+              <div key={index} className="flex justify-between">
+                <span>
+                  {index + 1}. {ball.ballType.toUpperCase()}
+                  {ball.isWicket && ` - Wicket (${ball.wicketType})`}
+                </span>
+                <span className="text-gray-500">Runs: {ball.runs}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No balls recorded yet.</p>
+        )}
       </Card>
 
       {/* Action Buttons */}

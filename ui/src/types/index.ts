@@ -1,3 +1,5 @@
+// types/index.ts
+
 export interface Team {
   name: string;
   players: string[];
@@ -24,13 +26,19 @@ export interface OpeningPlayers {
   bowler: string;
 }
 
+export type BallType = 'normal' | 'wide' | 'noBall' | 'bye' | 'legBye' | 'wicket';
+
+export type WicketType = 'bowled' | 'caught' | 'lbw' | 'runout' | 'stumped' | 'hitwicket';
+
 export interface BallData {
-  ballType: 'normal' | 'wide' | 'noBall' | 'bye' | 'legBye' | 'wicket';
+  ballType: BallType;
   runs: number;
   isWicket: boolean;
   commentary?: string;
-  wicketType?: 'bowled' | 'caught' | 'lbw' | 'runout' | 'stumped' | 'hitwicket';
+  wicketType?: WicketType;
   newBatsman?: string;
+  batsman?: string;
+  bowler?: string;
 }
 
 export interface PlayerStats {
@@ -53,8 +61,25 @@ export interface BowlerStats {
   economyRate: number;
 }
 
+export interface Extras {
+  byes: number;
+  legByes: number;
+  wides: number;
+  noBalls: number;
+  penalties: number;
+  total: number;
+}
+
+export interface FallOfWicket {
+  wicket: number;
+  runs: number;
+  over: number;
+  batsman: string;
+}
+
 export interface MatchScoreboard {
   id: string;
+  matchId: string;
   hostTeam: string;
   visitorTeam: string;
   currentInnings: number;
@@ -69,22 +94,12 @@ export interface MatchScoreboard {
   currentBowler: BowlerStats;
   allBatsmen: PlayerStats[];
   allBowlers: BowlerStats[];
-  extras: {
-    byes: number;
-    legByes: number;
-    wides: number;
-    noBalls: number;
-    penalties: number;
-    total: number;
-  };
-  fallOfWickets: Array<{
-    wicket: number;
-    runs: number;
-    over: number;
-    batsman: string;
-  }>;
+  extras: Extras;
+  fallOfWickets: FallOfWicket[];
   isComplete: boolean;
   result?: string;
+  lastUpdated?: string;
+  ballHistory?: BallData[]; // recently added
 }
 
 export interface Match {
@@ -102,7 +117,7 @@ export interface Match {
   status: 'active' | 'completed' | 'abandoned';
   createdAt: string;
   lastUpdated: string;
-  scoreboard?: MatchScoreboard; // if included in some APIs
+  scoreboard?: MatchScoreboard;
 }
 
 export interface CurrentMatch {
@@ -111,7 +126,6 @@ export interface CurrentMatch {
   settings: MatchSettings;
 }
 
-// Generic API response as per your backend: { code, message, result }
 export interface ApiResponse<T> {
   code: number;
   message: string;

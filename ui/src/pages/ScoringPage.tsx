@@ -23,30 +23,26 @@ const ScoringPage: React.FC = () => {
     getCurrentScore,
   } = useMatchStore();
 
-  const [scoreboard, setScoreboard] = useState(currentMatch?.scoreboard ?? null);
+  const scoreboard = currentMatch?.scoreboard;
   const [showWicketModal, setShowWicketModal] = useState(false);
   const [showBowlerModal, setShowBowlerModal] = useState(false);
   const [newBatsman, setNewBatsman] = useState('');
   const [newBowler, setNewBowler] = useState('');
   const [wicketType, setWicketType] = useState('bowled');
+  const [commentary, setCommentary] = useState('');
   const [currentBalls, setCurrentBalls] = useState<any[]>([]);
+  console.log("ScoringPage rendered with currentMatch:", currentMatch);
 
   useEffect(() => {
     loadScoreboard();
   }, []);
 
-  useEffect(() => {
-    if (currentMatch?.scoreboard) {
-      setScoreboard(currentMatch.scoreboard);
-    }
-  }, [currentMatch]);
 
   const loadScoreboard = async () => {
     if (!currentMatch?.id) return;
     try {
       const response = await getScoreboard(currentMatch.id);
-      updateScoreboard(response.result);
-      setScoreboard(response.result);
+      updateScoreboard(response.result);         // store-wide update
     } catch (error) {
       console.error('Error loading scoreboard:', error);
     }
@@ -61,35 +57,39 @@ const ScoringPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await submitBall(currentMatch.id, ballData);
-      console.log('Ball submitted:', ballData);
-      updateScoreboard(response.result.scoreboard);
-      setScoreboard(response.result.scoreboard);
+    const batsman = currentMatch?.scoreboard?.currentBatsmen?.[0]?.name ?? '';
+    const bowler = currentMatch?.scoreboard?.currentBowler?.name ?? '';
 
-      if (ballData.isWicket) {
-        setShowWicketModal(true);
-      } else if (response.result.scoreboard.balls % 6 === 0) {
-        setShowBowlerModal(true);
-      }
+    try {
+      // Step 1: Submit the ball
+      await submitBall(currentMatch.id, {
+        ...ballData,
+        batsman,
+        bowler,
+        commentary: commentary.trim() || undefined,
+      });
+
+      // Step 2: Reload scoreboard after submission
+      const updatedScoreboardResponse = await getScoreboard(currentMatch.id);
+      updateScoreboard(updatedScoreboardResponse.result); // Make sure this merges into currentMatch correctly
+
+      setCommentary('');
+      console.log('✅ Ball submitted and scoreboard updated');
     } catch (error) {
+      console.error('❌ Error submitting ball:', error);
       setError(handleApiError(error));
     } finally {
       setLoading(false);
     }
   };
 
+
   const handleRunClick = (runs: number) => {
-    handleBallSubmit({
-      ballType: 'normal',
-      runs,
-      isWicket: false,
-    });
+    handleBallSubmit({ ballType: 'normal', runs, isWicket: false });
   };
 
   const handleExtraClick = (type: 'wide' | 'noBall' | 'bye' | 'legBye') => {
-    const runs =
-      currentMatch?.settings[type === 'wide' ? 'wideBall' : 'noBall']?.runs || 1;
+    const runs = currentMatch?.settings[type === 'wide' ? 'wideBall' : 'noBall']?.runs || 1;
     handleBallSubmit({
       ballType: type,
       runs: type === 'bye' || type === 'legBye' ? 1 : runs,
@@ -97,13 +97,10 @@ const ScoringPage: React.FC = () => {
     });
   };
 
-  const handleWicketClick = () => {
-    setShowWicketModal(true);
-  };
+  const handleWicketClick = () => setShowWicketModal(true);
 
   const confirmWicket = () => {
     if (!newBatsman.trim()) return;
-
     handleBallSubmit({
       ballType: 'wicket',
       runs: 0,
@@ -111,26 +108,23 @@ const ScoringPage: React.FC = () => {
       wicketType: wicketType as any,
       newBatsman: newBatsman.trim(),
     });
-
     setShowWicketModal(false);
     setNewBatsman('');
   };
 
   const confirmNewBowler = () => {
     if (!newBowler.trim()) return;
-    // You can handle updating the bowler in backend here if needed
+    // future: send new bowler to backend
     setShowBowlerModal(false);
     setNewBowler('');
   };
 
   const handleUndo = async () => {
     if (!currentMatch) return;
-
     setLoading(true);
     try {
       const response = await undoLastBall(currentMatch.id);
       updateScoreboard(response.result.scoreboard);
-      setScoreboard(response.result.scoreboard);
     } catch (error) {
       setError(handleApiError(error));
     } finally {
@@ -162,7 +156,6 @@ const ScoringPage: React.FC = () => {
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4">
-      {/* Match Header */}
       <Card>
         <div className="text-center mb-4">
           <h2 className="text-lg font-bold text-gray-900">
@@ -172,7 +165,6 @@ const ScoringPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Score Display */}
       <Card>
         <div className="text-center">
           <div className="text-4xl font-bold text-primary-600 mb-2">
@@ -186,17 +178,12 @@ const ScoringPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Current Players */}
       <Card>
         <h3 className="font-semibold text-gray-900 mb-3">Current Batsmen</h3>
         <div className="space-y-2">
-          {scoreboard.currentBatsmen.map((batsman, index) => (
+          {scoreboard.currentBatsmen?.map((batsman, index) => (
             <div key={index} className="flex justify-between items-center">
-              <span
-                className={`font-medium ${
-                  index === 0 ? 'text-primary-600' : 'text-gray-700'
-                }`}
-              >
+              <span className={`font-medium ${index === 0 ? 'text-primary-600' : 'text-gray-700'}`}>
                 {batsman.name} {index === 0 && '*'}
               </span>
               <span className="text-sm text-gray-600">
@@ -206,29 +193,23 @@ const ScoringPage: React.FC = () => {
             </div>
           ))}
         </div>
-
         <div className="mt-4 pt-3 border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-gray-700">
-              {scoreboard.currentBowler.name}
-            </span>
-            <span className="text-sm text-gray-600">
-              {formatOvers(scoreboard.currentBowler.overs * 6)}-
-              {scoreboard.currentBowler.maidens}-
-              {scoreboard.currentBowler.runs}-
-              {scoreboard.currentBowler.wickets}
-            </span>
-          </div>
+          {scoreboard.currentBowler ? (
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-700">{scoreboard.currentBowler.name}</span>
+              <span className="text-sm text-gray-600">
+                {formatOvers(scoreboard.currentBowler.overs * 6)}-{scoreboard.currentBowler.maidens}-
+                {scoreboard.currentBowler.runs}-{scoreboard.currentBowler.wickets}
+              </span>
+            </div>
+          ) : (
+            <div className="text-gray-500 text-sm">No bowler selected</div>
+          )}
         </div>
       </Card>
 
-      {/* This Over */}
-      <OverDisplay
-        balls={currentBalls}
-        currentOver={Math.floor(scoreboard.balls / 6)}
-      />
+      <OverDisplay balls={currentBalls} currentOver={Math.floor(scoreboard.balls / 6)} />
 
-      {/* Score Pad */}
       <Card>
         <ScorePad
           onRunClick={handleRunClick}
@@ -238,46 +219,24 @@ const ScoringPage: React.FC = () => {
         />
       </Card>
 
-      {/* Action Buttons */}
       <Card>
         <div className="grid grid-cols-3 gap-2">
-          <Button
-            variant="secondary"
-            icon={RotateCcw}
-            onClick={handleUndo}
-            disabled={isLoading}
-          >
+          <Button variant="secondary" icon={RotateCcw} onClick={handleUndo} disabled={isLoading}>
             Undo
           </Button>
-          <Button
-            variant="outline"
-            icon={RefreshCw}
-            onClick={loadScoreboard}
-            disabled={isLoading}
-          >
+          <Button variant="outline" icon={RefreshCw} onClick={loadScoreboard} disabled={isLoading}>
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            icon={BarChart3}
-            onClick={() => navigate(ROUTES.SCOREBOARD)}
-          >
+          <Button variant="outline" icon={BarChart3} onClick={() => navigate(ROUTES.SCOREBOARD)}>
             Stats
           </Button>
         </div>
       </Card>
 
-      {/* Wicket Modal */}
-      <Modal
-        isOpen={showWicketModal}
-        onClose={() => setShowWicketModal(false)}
-        title="Wicket Fallen"
-      >
+      <Modal isOpen={showWicketModal} onClose={() => setShowWicketModal(false)} title="Wicket Fallen">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Wicket Type
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Wicket Type</label>
             <select
               value={wicketType}
               onChange={(e) => setWicketType(e.target.value)}
@@ -291,7 +250,6 @@ const ScoringPage: React.FC = () => {
               <option value="hitwicket">Hit Wicket</option>
             </select>
           </div>
-
           <Input
             label="New Batsman"
             value={newBatsman}
@@ -299,35 +257,20 @@ const ScoringPage: React.FC = () => {
             placeholder="Enter new batsman name"
             required
           />
-
           <div className="flex space-x-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowWicketModal(false)}
-            >
+            <Button variant="outline" className="flex-1" onClick={() => setShowWicketModal(false)}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={confirmWicket}
-            >
+            <Button variant="primary" className="flex-1" onClick={confirmWicket}>
               Confirm
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* New Bowler Modal */}
-      <Modal
-        isOpen={showBowlerModal}
-        onClose={() => setShowBowlerModal(false)}
-        title="New Over"
-      >
+      <Modal isOpen={showBowlerModal} onClose={() => setShowBowlerModal(false)} title="New Over">
         <div className="space-y-4">
           <p className="text-gray-600">Over completed. Please select new bowler.</p>
-
           <Input
             label="New Bowler"
             value={newBowler}
@@ -335,20 +278,11 @@ const ScoringPage: React.FC = () => {
             placeholder="Enter new bowler name"
             required
           />
-
           <div className="flex space-x-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowBowlerModal(false)}
-            >
+            <Button variant="outline" className="flex-1" onClick={() => setShowBowlerModal(false)}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={confirmNewBowler}
-            >
+            <Button variant="primary" className="flex-1" onClick={confirmNewBowler}>
               Continue
             </Button>
           </div>

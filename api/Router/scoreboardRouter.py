@@ -44,12 +44,30 @@ async def updateScoreboard(matchId: str, updatedData: Scoreboard):
     try:
         updateDict = updatedData.model_dump()
         updateDict["lastUpdated"] = formatDateTime()
-        result = updateScoreboardInDb({"matchId": matchId}, updateDict)
-        if result.modified_count == 0:
-            logger.warning(f"No scoreboard updated or not found for match: {matchId}")
-            return returnResponse(46)
-        return returnResponse(47)
-    except Exception as e:
-        logger.error(f"error occured while updating scoreboard , Error:{str(e)}")
-        return returnResponse(48)
 
+        existing = getScoreboardFromDb({"matchId": matchId})
+        if not existing:
+            logger.warning(f"⚠️ Scoreboard not found for update: {matchId}")
+            return returnResponse(46)
+
+        # Merge ballHistory if present
+        existingHistory = existing.get("ballHistory", [])
+        newHistory = updateDict.get("ballHistory", [])
+
+        if newHistory:
+            updateDict["ballHistory"] = existingHistory + newHistory
+        else:
+            updateDict["ballHistory"] = existingHistory  # retain existing if no new data
+
+        result = updateScoreboardInDb({"matchId": matchId}, updateDict)
+
+        if result.modified_count == 0:
+            logger.warning(f"⚠️ No scoreboard updated for match: {matchId}")
+            return returnResponse(46)
+
+        logger.info(f"✅ Scoreboard updated for match: {matchId}")
+        return returnResponse(47)
+
+    except Exception as e:
+        logger.error(f"❌ Error occurred while updating scoreboard: {e}", exc_info=True)
+        return returnResponse(48)

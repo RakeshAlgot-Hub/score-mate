@@ -12,11 +12,10 @@ const ScoreEntryPage: React.FC = () => {
   const [showWicketModal, setShowWicketModal] = useState(false);
   const [wicketType, setWicketType] = useState<string | null>(null);
   const [newBatsman, setNewBatsman] = useState('');
+  const [commentary, setCommentary] = useState('');
 
   const handleBallSubmit = async (ballData: any) => {
     if (!currentMatch) return;
-
-    console.log("📤 Submitting Ball Event:", ballData);
 
     setLoading(true);
     try {
@@ -24,9 +23,10 @@ const ScoreEntryPage: React.FC = () => {
         ...ballData,
         batsman: null,
         bowler: null,
-        commentary: null,
+        commentary: commentary.trim() || null,
       });
 
+      setCommentary('');
       console.log("✅ Ball recorded:", response.result);
     } catch (error) {
       setError('Error submitting ball event.');
@@ -37,8 +37,6 @@ const ScoreEntryPage: React.FC = () => {
   };
 
   const confirmWicket = () => {
-    console.log("🧪 confirmWicket called", { newBatsman, wicketType });
-
     if (!newBatsman.trim() || !wicketType) {
       alert('Please enter new batsman and select wicket type.');
       return;
@@ -63,9 +61,21 @@ const ScoreEntryPage: React.FC = () => {
     <div className="p-4 max-w-2xl mx-auto space-y-4">
       <Card>
         <h2 className="text-xl font-bold mb-4">Enter Ball</h2>
+
+        <input
+          type="text"
+          placeholder="Commentary (optional)"
+          className="w-full mb-4 border rounded p-2"
+          value={commentary}
+          onChange={(e) => setCommentary(e.target.value)}
+        />
+
         <div className="grid grid-cols-3 gap-3 mb-4">
           {runButtons.map((run) => (
-            <Button key={run} onClick={() => handleBallSubmit({ ballType: 'normal', runs: run, isWicket: false })}>
+            <Button
+              key={run}
+              onClick={() => handleBallSubmit({ ballType: 'normal', runs: run, isWicket: false })}
+            >
               {run}
             </Button>
           ))}
@@ -75,6 +85,7 @@ const ScoreEntryPage: React.FC = () => {
             Wicket
           </Button>
         </div>
+
         <Button onClick={() => navigate(-1)} variant="outline">
           Back
         </Button>
