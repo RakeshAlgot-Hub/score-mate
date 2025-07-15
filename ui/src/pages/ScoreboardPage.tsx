@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import { useMatchStore, handleApiError } from '../store/matchStore';
 import { getScoreboard } from '../services/scoreService';
 import { ROUTES } from '../constants/appConstants';
+import { formatOvers, calculateStrikeRate } from '../utils/formatters';
 
 const ScoreboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,23 +18,18 @@ const ScoreboardPage: React.FC = () => {
     }
   }, [currentMatch]);
 
- const loadScoreboard = async () => {
-  if (!currentMatch?.id) return;
-  try {
-    const response = await getScoreboard(currentMatch.id);
-    updateScoreboard(response.result); // ✅ updates Zustand store
-  } catch (error) {
-    console.error('Error loading scoreboard:', error);
-  }
-};
-  const formatOvers = (balls: number): string => {
-    const overs = Math.floor(balls / 6);
-    const remainingBalls = balls % 6;
-    return remainingBalls === 0 ? `${overs}` : `${overs}.${remainingBalls}`;
-  };
-
-  const calculateStrikeRate = (runs: number, balls: number): number => {
-    return balls > 0 ? (runs / balls) * 100 : 0;
+  const loadScoreboard = async () => {
+    if (!currentMatch?.id) return;
+    
+    setLoading(true);
+    try {
+      const response = await getScoreboard(currentMatch.id);
+      updateScoreboard(response.result);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const scoreboard = currentMatch?.scoreboard;
@@ -78,7 +74,7 @@ const ScoreboardPage: React.FC = () => {
 
       {/* Batting Statistics */}
       <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Batsman</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Batsmen</h3>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -144,7 +140,7 @@ const ScoreboardPage: React.FC = () => {
 
       {/* Bowling Statistics */}
       <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Bowler</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Bowlers</h3>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -181,39 +177,42 @@ const ScoreboardPage: React.FC = () => {
 
       {/* Fall of Wickets */}
       <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Fall of wickets</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Fall of Wickets</h3>
 
         <div className="space-y-2">
-          {scoreboard.fallOfWickets.map((wicket, index) => (
-            <div key={index} className="flex justify-between items-center text-sm">
-              <span className="font-medium text-gray-700">{wicket.batsman}</span>
-              <span className="text-gray-600">
-                {wicket.runs}/{wicket.wicket} ({formatOvers(wicket.over * 6)})
-              </span>
-            </div>
-          ))}
+          {scoreboard.fallOfWickets.length > 0 ? (
+            scoreboard.fallOfWickets.map((wicket, index) => (
+              <div key={index} className="flex justify-between items-center text-sm">
+                <span className="font-medium text-gray-700">{wicket.batsman}</span>
+                <span className="text-gray-600">
+                  {wicket.runs}/{wicket.wicket} ({formatOvers(wicket.over * 6)})
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm">No wickets fallen yet</p>
+          )}
         </div>
       </Card>
 
       {/* Ball History */}
-      <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ball History</h3>
-        {scoreboard.ballHistory && scoreboard.ballHistory.length > 0 ? (
-          <div className="space-y-1 text-sm text-gray-700">
-            {scoreboard.ballHistory.map((ball, index) => (
+      {scoreboard.ballHistory && scoreboard.ballHistory.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Balls</h3>
+          <div className="space-y-1 text-sm text-gray-700 max-h-40 overflow-y-auto">
+            {scoreboard.ballHistory.slice(-10).map((ball, index) => (
               <div key={index} className="flex justify-between">
                 <span>
-                  {index + 1}. {ball.ballType.toUpperCase()}
+                  {ball.ballType.toUpperCase()}
                   {ball.isWicket && ` - Wicket (${ball.wicketType})`}
+                  {ball.commentary && ` - ${ball.commentary}`}
                 </span>
                 <span className="text-gray-500">Runs: {ball.runs}</span>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-500">No balls recorded yet.</p>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex space-x-3">
@@ -229,7 +228,17 @@ const ScoreboardPage: React.FC = () => {
           variant="secondary"
           icon={Share}
           className="flex-1"
-          onClick={() => console.log('Share scoreboard')}
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({
+                title: `${scoreboard.hostTeam} vs ${scoreboard.visitorTeam}`,
+                text: `Current Score: ${scoreboard.score}/${scoreboard.wickets} (${formatOvers(scoreboard.balls)})`,
+              });
+            } else {
+              // Fallback for browsers that don't support Web Share API
+              console.log('Share functionality not available');
+            }
+          }}
         >
           Share
         </Button>

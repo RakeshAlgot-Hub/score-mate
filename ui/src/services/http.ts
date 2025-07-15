@@ -14,14 +14,14 @@ const axiosInstance: AxiosInstance = axios.create({
 // Request interceptor for logging and auth
 axiosInstance.interceptors.request.use(
   (config) => {
-    // console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     if (config.data) {
       console.log('📤 Request Data:', config.data);
     }
     return config;
   },
   (error: AxiosError) => {
-    // console.error('❌ Request Error:', error);
+    console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -45,4 +45,5 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(apiError);
   }
 );
+
 export default axiosInstance;

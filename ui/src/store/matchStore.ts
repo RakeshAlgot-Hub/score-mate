@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CurrentMatch, MatchScoreboard, MatchSettings, ApiError } from '../types';
+import { CurrentMatch, MatchScoreboard, MatchSettings, ApiError, Match } from '../types';
+
+interface MatchHistory {
+  id: string;
+  hostTeam: string;
+  visitorTeam: string;
+  lastUpdated: string;
+  status: string;
+  currentScore?: string;
+}
 
 interface MatchStore {
   currentMatch: CurrentMatch | null;
   isLoading: boolean;
   error: string | null;
 
+  // Core actions
   setCurrentMatch: (match: CurrentMatch) => void;
   updateScoreboard: (scoreboard: MatchScoreboard) => void;
   updateSettings: (settings: MatchSettings) => void;
@@ -14,8 +24,16 @@ interface MatchStore {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
+  // Utility functions
   getCurrentScore: () => string;
   isMatchActive: () => boolean;
+
+  // Local storage management
+  persistMatchIdToStorage: (matchId: string) => void;
+  loadMatchFromStorage: () => string | null;
+  addMatchToLocalHistory: (match: Match) => void;
+  getLocalMatchHistory: () => MatchHistory[];
+  clearStorage: () => void;
 }
 
 export const useMatchStore = create<MatchStore>()(
@@ -27,7 +45,7 @@ export const useMatchStore = create<MatchStore>()(
 
       setCurrentMatch: (match: CurrentMatch) => {
         set({
-          currentMatch: { ...match }, // ✅ create new object
+          currentMatch: { ...match },
           error: null,
         });
       },
@@ -39,7 +57,7 @@ export const useMatchStore = create<MatchStore>()(
         set({
           currentMatch: {
             ...current,
-            scoreboard: { ...scoreboard }, // ✅ important: copy to trigger re-render
+            scoreboard: { ...scoreboard },
           },
         });
       },
@@ -85,13 +103,56 @@ export const useMatchStore = create<MatchStore>()(
         const match = get().currentMatch;
         return !!(match?.scoreboard && !match.scoreboard.isComplete);
       },
+
+      // Local storage management
+      persistMatchIdToStorage: (matchId: string) => {
+        localStorage.setItem('currentMatchId', matchId);
+      },
+
+      loadMatchFromStorage: () => {
+        return localStorage.getItem('currentMatchId');
+      },
+
+      addMatchToLocalHistory: (match: Match) => {
+        const history = get().getLocalMatchHistory();
+        const matchHistory: MatchHistory = {
+          id: match.id,
+          hostTeam: match.hostTeam.name,
+          visitorTeam: match.visitorTeam.name,
+          lastUpdated: match.lastUpdated,
+          status: match.status,
+          currentScore: match.scoreboard ? 
+            `${match.scoreboard.score}/${match.scoreboard.wickets} (${Math.floor(match.scoreboard.balls / 6)}.${match.scoreboard.balls % 6})` 
+            : undefined,
+        };
+
+        // Remove existing entry if it exists
+        const filteredHistory = history.filter(h => h.id !== match.id);
+        const updatedHistory = [matchHistory, ...filteredHistory].slice(0, 20); // Keep last 20 matches
+
+        localStorage.setItem('matchHistory', JSON.stringify(updatedHistory));
+      },
+
+      getLocalMatchHistory: () => {
+        try {
+          const history = localStorage.getItem('matchHistory');
+          return history ? JSON.parse(history) : [];
+        } catch {
+          return [];
+        }
+      },
+
+      clearStorage: () => {
+        localStorage.removeItem('currentMatchId');
+        localStorage.removeItem('matchHistory');
+      },
     }),
     {
       name: 'scoremate-match-store',
       partialize: (state) => ({
         currentMatch: state.currentMatch
           ? {
-              id: state.currentMatch.id, // only minimal info
+              id: state.currentMatch.id,
             }
           : null,
       }),
@@ -99,7 +160,7 @@ export const useMatchStore = create<MatchStore>()(
   )
 );
 
-// 🔧 Central error helper
+// Central error helper
 export const handleApiError = (error: ApiError | any): string => {
   if (error?.message) return error.message;
   if (typeof error === 'string') return error;
