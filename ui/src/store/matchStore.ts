@@ -93,10 +93,8 @@ export const useMatchStore = create<MatchStore>()(
         const match = get().currentMatch;
         if (!match?.scoreboard) return '0/0 (0.0)';
 
-        const { score, wickets, balls } = match.scoreboard;
-        const overs = Math.floor(balls / 6);
-        const remaining = balls % 6;
-        return `${score}/${wickets} (${overs}.${remaining})`;
+        const { score = 0, wickets = 0, overs = 0 } = match.scoreboard;
+        return `${score}/${wickets} (${overs})`;
       },
 
       isMatchActive: () => {
@@ -119,10 +117,10 @@ export const useMatchStore = create<MatchStore>()(
           id: match.id,
           hostTeam: match.hostTeam.name,
           visitorTeam: match.visitorTeam.name,
-          lastUpdated: match.lastUpdated,
-          status: match.status,
+          lastUpdated: match.lastUpdated || '',
+          status: match.status || 'active',
           currentScore: match.scoreboard ? 
-            `${match.scoreboard.score}/${match.scoreboard.wickets} (${Math.floor(match.scoreboard.balls / 6)}.${match.scoreboard.balls % 6})` 
+            `${match.scoreboard.score || 0}/${match.scoreboard.wickets || 0} (${match.scoreboard.overs || 0})` 
             : undefined,
         };
 

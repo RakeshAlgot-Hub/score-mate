@@ -5,13 +5,14 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import { useMatchStore, handleApiError } from '../store/matchStore';
-import { setOpeningPlayers } from '../services/scoreService';
+import { setOpeningPlayers } from '../services/matchService';
+import { getScoreboard } from '../services/scoreService';
 import { OpeningPlayers } from '../types';
 import { ROUTES } from '../constants/appConstants';
 
 const SelectOpeningPlayersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentMatch, setLoading, setError, isLoading } = useMatchStore();
+  const { currentMatch, updateScoreboard, setLoading, setError, isLoading } = useMatchStore();
   
   const [players, setPlayers] = useState<OpeningPlayers>({
     striker: '',
@@ -24,19 +25,19 @@ const SelectOpeningPlayersPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!players.striker.trim()) {
+    if (!players.striker?.trim()) {
       newErrors.striker = 'Striker name is required';
     }
     
-    if (!players.nonStriker.trim()) {
+    if (!players.nonStriker?.trim()) {
       newErrors.nonStriker = 'Non-striker name is required';
     }
     
-    if (!players.bowler.trim()) {
+    if (!players.bowler?.trim()) {
       newErrors.bowler = 'Bowler name is required';
     }
     
-    if (players.striker.trim() === players.nonStriker.trim()) {
+    if (players.striker?.trim() === players.nonStriker?.trim()) {
       newErrors.nonStriker = 'Striker and non-striker must be different players';
     }
     
@@ -57,6 +58,11 @@ const SelectOpeningPlayersPage: React.FC = () => {
 
     try {
       await setOpeningPlayers(currentMatch.id, players);
+      
+      // Refresh scoreboard after setting opening players
+      const updatedScoreboard = await getScoreboard(currentMatch.id);
+      updateScoreboard(updatedScoreboard);
+      
       navigate(ROUTES.SCORING);
     } catch (error) {
       setError(handleApiError(error));
@@ -76,7 +82,7 @@ const SelectOpeningPlayersPage: React.FC = () => {
             
             <Input
               label="Striker Name"
-              value={players.striker}
+              value={players.striker || ''}
               onChange={(e) => setPlayers({ ...players, striker: e.target.value })}
               placeholder="Enter striker name"
               required
@@ -85,7 +91,7 @@ const SelectOpeningPlayersPage: React.FC = () => {
 
             <Input
               label="Non-Striker Name"
-              value={players.nonStriker}
+              value={players.nonStriker || ''}
               onChange={(e) => setPlayers({ ...players, nonStriker: e.target.value })}
               placeholder="Enter non-striker name"
               required
@@ -98,7 +104,7 @@ const SelectOpeningPlayersPage: React.FC = () => {
             
             <Input
               label="Opening Bowler"
-              value={players.bowler}
+              value={players.bowler || ''}
               onChange={(e) => setPlayers({ ...players, bowler: e.target.value })}
               placeholder="Enter bowler name"
               required

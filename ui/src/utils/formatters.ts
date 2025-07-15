@@ -1,10 +1,8 @@
 /**
- * Formats balls into overs display (e.g., 125 balls -> "20.5")
+ * Backend stores overs as decimal (1.2), so we can use it directly
  */
-export const formatOvers = (balls: number): string => {
-  const overs = Math.floor(balls / 6);
-  const remainingBalls = balls % 6;
-  return remainingBalls === 0 ? `${overs}` : `${overs}.${remainingBalls}`;
+export const formatOvers = (overs: number): string => {
+  return overs.toString();
 };
 
 /**
@@ -25,6 +23,26 @@ export const calculateEconomyRate = (runs: number, overs: number): number => {
  * Formats date for display
  */
 export const formatDate = (dateString: string): string => {
+  // Handle backend timestamp format (20250715141135969)
+  if (dateString.length === 17) {
+    const year = dateString.substring(0, 4);
+    const month = dateString.substring(4, 6);
+    const day = dateString.substring(6, 8);
+    const hour = dateString.substring(8, 10);
+    const minute = dateString.substring(10, 12);
+    const second = dateString.substring(12, 14);
+    
+    const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  
+  // Fallback for ISO format
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',

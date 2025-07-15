@@ -11,7 +11,7 @@ const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor for logging and auth
+// Request interceptor for logging
 axiosInstance.interceptors.request.use(
   (config) => {
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
@@ -33,10 +33,10 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    const data = error.response?.data as { message?: string } | undefined;
+    const data = error.response?.data as { detail?: string; message?: string } | undefined;
 
     const apiError: ApiError = {
-      message: data?.message ?? error.message ?? 'An unexpected error occurred',
+      message: data?.detail ?? data?.message ?? error.message ?? 'An unexpected error occurred',
       status: error.response?.status ?? 500,
       details: data,
     };

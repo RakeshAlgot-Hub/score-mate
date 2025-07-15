@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, RotateCcw, RefreshCw } from 'lucide-react';
+import { BarChart3, RefreshCw } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
@@ -8,7 +8,7 @@ import Input from '../components/ui/Input';
 import ScorePad from '../components/ScorePad';
 import OverDisplay from '../components/OverDisplay';
 import { useMatchStore, handleApiError } from '../store/matchStore';
-import { submitBall, getScoreboard, undoLastBall } from '../services/scoreService';
+import { submitBall, getScoreboard } from '../services/scoreService';
 import { getMatchById } from '../services/matchService';
 import { BallData } from '../types';
 import { ROUTES } from '../constants/appConstants';
@@ -59,13 +59,10 @@ const ScoringPage: React.FC = () => {
   const loadMatchById = async (matchId: string) => {
     setLoading(true);
     try {
-      const [matchResponse, scoreboardResponse] = await Promise.all([
+      const [match, scoreboard] = await Promise.all([
         getMatchById(matchId),
         getScoreboard(matchId)
       ]);
-
-      const match = matchResponse.result;
-      const scoreboard = scoreboardResponse.result;
 
       setCurrentMatch({
         id: match.id,
@@ -90,9 +87,9 @@ const ScoringPage: React.FC = () => {
     
     setLoading(true);
     try {
-      const response = await getScoreboard(currentMatch.id);
-      updateScoreboard(response.result);
-      updateCurrentOverBalls(response.result);
+      const scoreboard = await getScoreboard(currentMatch.id);
+      updateScoreboard(scoreboard);
+      updateCurrentOverBalls(scoreboard);
     } catch (error) {
       setError(handleApiError(error));
     } finally {
@@ -101,13 +98,8 @@ const ScoringPage: React.FC = () => {
   };
 
   const updateCurrentOverBalls = (scoreboard: any) => {
-    // Extract balls from current over for display
-    const currentOverNumber = Math.floor(scoreboard.balls / 6);
-    const ballsInCurrentOver = scoreboard.balls % 6;
-    
-    // This would ideally come from the backend
-    // For now, we'll simulate based on recent ball history
-    const recentBalls = scoreboard.ballHistory?.slice(-ballsInCurrentOver) || [];
+    // Extract recent balls from ballHistory for display
+    const recentBalls = scoreboard.ballHistory?.slice(-6) || [];
     setCurrentOverBalls(recentBalls);
   };
 
@@ -128,20 +120,21 @@ const ScoringPage: React.FC = () => {
         ...ballData,
         batsman,
         bowler,
-        commentary: commentary.trim() || undefined,
+        commentary: commentary.trim() || null,
       });
 
       // Reload scoreboard after submission
-      const updatedScoreboardResponse = await getScoreboard(currentMatch.id);
-      updateScoreboard(updatedScoreboardResponse.result);
-      updateCurrentOverBalls(updatedScoreboardResponse.result);
+      const updatedScoreboard = await getScoreboard(currentMatch.id);
+      updateScoreboard(updatedScoreboard);
+      updateCurrentOverBalls(updatedScoreboard);
 
       setCommentary('');
 
-      // Check if over is complete (6 legal balls)
-      const newScoreboard = updatedScoreboardResponse.result;
-      const ballsInOver = newScoreboard.balls % 6;
-      if (ballsInOver === 0 && newScoreboard.balls > 0 && !ballData.isWicket) {
+      // Check if over is complete (based on overs change)
+      const currentOvers = currentMatch.scoreboard?.overs || 0;
+      const newOvers = updatedScoreboard.overs || 0;
+      
+      if (newOvers > currentOvers && !ballData.isWicket) {
         setShowBowlerModal(true);
       }
 
@@ -197,21 +190,6 @@ const ScoringPage: React.FC = () => {
     setNewBowler('');
   };
 
-  const handleUndo = async () => {
-    if (!currentMatch) return;
-    
-    setLoading(true);
-    try {
-      const response = await undoLastBall(currentMatch.id);
-      updateScoreboard(response.result.scoreboard);
-      updateCurrentOverBalls(response.result.scoreboard);
-    } catch (error) {
-      setError(handleApiError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (!currentMatch?.scoreboard || isLoading) {
     return (
       <div className="p-4 max-w-md mx-auto">
@@ -244,9 +222,9 @@ const ScoringPage: React.FC = () => {
           <div className="text-4xl font-bold text-primary-600 mb-2">
             {getCurrentScore()}
           </div>
-          {scoreboard.target && (
+          {scoreboard.target && scoreboard.target > 0 && (
             <div className="text-sm text-gray-500 mt-2">
-              Target: {scoreboard.target} | Need {scoreboard.target - scoreboard.score} runs
+              Target: {scoreboard.target} | Need {(scoreboard.target || 0) - (scoreboard.score || 0)} runs
             </div>
           )}
         </div>
@@ -263,7 +241,7 @@ const ScoringPage: React.FC = () => {
               </span>
               <span className="text-sm text-gray-600">
                 {batsman.runs}({batsman.balls}) SR:{' '}
-                {calculateStrikeRate(batsman.runs, batsman.balls).toFixed(1)}
+                {calculateStrikeRate(batsman.runs || 0, batsman.balls || 0).toFixed(1)}
               </span>
             </div>
           ))}
@@ -274,8 +252,8 @@ const ScoringPage: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="font-medium text-gray-700">{scoreboard.currentBowler.name}</span>
               <span className="text-sm text-gray-600">
-                {formatOvers(scoreboard.currentBowler.overs * 6)}-{scoreboard.currentBowler.maidens}-
-                {scoreboard.currentBowler.runs}-{scoreboard.currentBowler.wickets}
+                {formatOvers(scoreboard.currentBowler.overs || 0)}-{scoreboard.currentBowler.maidens || 0}-
+                {scoreboard.currentBowler.runs || 0}-{scoreboard.currentBowler.wickets || 0}
               </span>
             </div>
           ) : (
@@ -287,7 +265,7 @@ const ScoringPage: React.FC = () => {
       {/* Current Over */}
       <OverDisplay 
         balls={currentOverBalls} 
-        currentOver={Math.floor(scoreboard.balls / 6)} 
+        currentOver={Math.floor((scoreboard.overs || 0))} 
       />
 
       {/* Commentary Input */}
@@ -312,15 +290,7 @@ const ScoringPage: React.FC = () => {
 
       {/* Action Buttons */}
       <Card>
-        <div className="grid grid-cols-3 gap-2">
-          <Button 
-            variant="secondary" 
-            icon={RotateCcw} 
-            onClick={handleUndo} 
-            disabled={isLoading}
-          >
-            Undo
-          </Button>
+        <div className="grid grid-cols-2 gap-2">
           <Button 
             variant="outline" 
             icon={RefreshCw} 

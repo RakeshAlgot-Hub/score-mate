@@ -6,6 +6,7 @@ import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import { useMatchStore, handleApiError } from '../store/matchStore';
 import { createMatch } from '../services/matchService';
+import { getScoreboard } from '../services/scoreService';
 import { MatchConfig } from '../types';
 import { ROUTES } from '../constants/appConstants';
 
@@ -19,7 +20,7 @@ interface FormData {
 
 const TeamsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setCurrentMatch, setLoading, setError, isLoading } = useMatchStore();
+  const { setCurrentMatch, setLoading, setError, isLoading, persistMatchIdToStorage, addMatchToLocalHistory } = useMatchStore();
   
   const [formData, setFormData] = useState<FormData>({
     hostTeam: '',
@@ -75,13 +76,20 @@ const TeamsPage: React.FC = () => {
 
     try {
       const matchConfig = createMatchConfig();
-      const response = await createMatch(matchConfig);
+      const match = await createMatch(matchConfig);
+      
+      // Get initial scoreboard
+      const scoreboard = await getScoreboard(match.id);
       
       setCurrentMatch({
-        id: response.result.id,
-        scoreboard: response.result.scoreboard,
+        id: match.id,
+        scoreboard,
         settings: matchConfig.settings,
       });
+
+      // Save to local history and storage
+      addMatchToLocalHistory(match);
+      persistMatchIdToStorage(match.id);
       
       navigate(ROUTES.ADVANCED_SETTINGS);
     } catch (error) {
@@ -91,31 +99,36 @@ const TeamsPage: React.FC = () => {
     }
   };
 
- const handleStartMatch = async () => {
-  console.log('Starting match with config:', formData);
-  if (!validateForm()) return;
+  const handleStartMatch = async () => {
+    if (!validateForm()) return;
 
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  try {
-    const matchConfig = createMatchConfig();
-    const response = await createMatch(matchConfig); // response.result is your match
+    try {
+      const matchConfig = createMatchConfig();
+      const match = await createMatch(matchConfig);
 
-    setCurrentMatch({
-      id: response.result.id,
-      scoreboard: response.result.scoreboard, // from backend
-      settings: matchConfig.settings,
-    });
+      // Get initial scoreboard
+      const scoreboard = await getScoreboard(match.id);
 
-    navigate(ROUTES.SELECT_PLAYERS);
-  } catch (error) {
-    setError(handleApiError(error));
-  } finally {
-    setLoading(false);
-  }
-};
+      setCurrentMatch({
+        id: match.id,
+        scoreboard,
+        settings: matchConfig.settings,
+      });
 
+      // Save to local history and storage
+      addMatchToLocalHistory(match);
+      persistMatchIdToStorage(match.id);
+
+      navigate(ROUTES.SELECT_PLAYERS);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-4 max-w-md mx-auto pb-20">
